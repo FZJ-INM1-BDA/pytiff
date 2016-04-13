@@ -49,7 +49,7 @@ fabric.properties
 
 ### Intellij Patch ###
 *.iml
-
+*.idea
 
 ### C++ ###
 # Compiled Object files
