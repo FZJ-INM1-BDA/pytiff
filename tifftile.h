@@ -5,10 +5,14 @@
 #ifndef BIGTIFF_TIFFTILE_H
 #define BIGTIFF_TIFFTILE_H
 
+#include <string>
 #include "tiff.h"
 #include "tiffio.h"
 
-extern short get_samples_per_pixel(const char* filename);
-extern short get_n_bits(const char* filename);
-extern void read_single_tile(TIFF* tif, uint32 x,uint32 y, int8* buf);
+short get_samples_per_pixel(const std::string& filename);
+short get_n_bits(const std::string& filename);
+void read_single_tile(TIFF* tif, uint32 x,uint32 y, int8* buf);
+void read_first_tile(const std::string filename, void* buf);
+int tile_length(const std::string filename);
+int tile_width(const std::string filename);
 #endif //BIGTIFF_TIFFTILE_H

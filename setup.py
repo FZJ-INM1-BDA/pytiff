@@ -5,9 +5,10 @@ from Cython.Distutils import build_ext
 
 setup(
     ext_modules = cythonize([
-        Extension("pytiff", [ "tifftile.c","pytiff.pyx"],
+        Extension("pytiff", [ "tifftile.cpp","pytiff.pyx"],
         libraries=["tiff"],
         include_dirs=["."],
+        language="c++"
         )
     ]),
     cmdclass = {"build_ext": build_ext}
