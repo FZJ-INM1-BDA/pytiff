@@ -15,5 +15,5 @@ cpdef first_tile(const string name):
   print(width)
   print(length)
   cdef np.ndarray[np.int16_t, ndim=2, mode="c"] nbuffer = np.zeros((width,length), dtype =np.int16)
-  ctiff.read_first_tile(name, &nbuffer[0,0])
+  ctiff.read_first_tile(name, <void *>nbuffer.data)
   return nbuffer

@@ -884,9 +884,6 @@ static CYTHON_INLINE int  __Pyx_GetBufferAndValidate(Py_buffer* buf, PyObject* o
     __Pyx_TypeInfo* dtype, int flags, int nd, int cast, __Pyx_BufFmt_StackElem* stack);
 static CYTHON_INLINE void __Pyx_SafeReleaseBuffer(Py_buffer* info);
 
-static void __Pyx_RaiseBufferIndexError(int axis);
-
-#define __Pyx_BufPtrCContig2d(type, buf, i0, s0, i1, s1) ((type)((char*)buf + i0 * s0) + i1)
 static CYTHON_INLINE void __Pyx_ErrRestore(PyObject *type, PyObject *value, PyObject *tb);
 static CYTHON_INLINE void __Pyx_ErrFetch(PyObject **type, PyObject **value, PyObject **tb);
 
@@ -1441,9 +1438,6 @@ static PyObject *__pyx_f_6pytiff_first_tile(std::string const __pyx_v_name, CYTH
   PyObject *__pyx_t_4 = NULL;
   PyObject *__pyx_t_5 = NULL;
   PyArrayObject *__pyx_t_6 = NULL;
-  Py_ssize_t __pyx_t_7;
-  Py_ssize_t __pyx_t_8;
-  int __pyx_t_9;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -1488,7 +1482,7 @@ static PyObject *__pyx_f_6pytiff_first_tile(std::string const __pyx_v_name, CYTH
  *   print(width)
  *   print(length)             # <<<<<<<<<<<<<<
  *   cdef np.ndarray[np.int16_t, ndim=2, mode="c"] nbuffer = np.zeros((width,length), dtype =np.int16)
- *   ctiff.read_first_tile(name, &nbuffer[0,0])
+ *   ctiff.read_first_tile(name, <void *>nbuffer.data)
  */
   __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_length); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
@@ -1499,7 +1493,7 @@ static PyObject *__pyx_f_6pytiff_first_tile(std::string const __pyx_v_name, CYTH
  *   print(width)
  *   print(length)
  *   cdef np.ndarray[np.int16_t, ndim=2, mode="c"] nbuffer = np.zeros((width,length), dtype =np.int16)             # <<<<<<<<<<<<<<
- *   ctiff.read_first_tile(name, &nbuffer[0,0])
+ *   ctiff.read_first_tile(name, <void *>nbuffer.data)
  *   return nbuffer
  */
   __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -1555,29 +1549,14 @@ static PyObject *__pyx_f_6pytiff_first_tile(std::string const __pyx_v_name, CYTH
   /* "pytiff.pyx":18
  *   print(length)
  *   cdef np.ndarray[np.int16_t, ndim=2, mode="c"] nbuffer = np.zeros((width,length), dtype =np.int16)
- *   ctiff.read_first_tile(name, &nbuffer[0,0])             # <<<<<<<<<<<<<<
+ *   ctiff.read_first_tile(name, <void *>nbuffer.data)             # <<<<<<<<<<<<<<
  *   return nbuffer
  */
-  __pyx_t_7 = 0;
-  __pyx_t_8 = 0;
-  __pyx_t_9 = -1;
-  if (__pyx_t_7 < 0) {
-    __pyx_t_7 += __pyx_pybuffernd_nbuffer.diminfo[0].shape;
-    if (unlikely(__pyx_t_7 < 0)) __pyx_t_9 = 0;
-  } else if (unlikely(__pyx_t_7 >= __pyx_pybuffernd_nbuffer.diminfo[0].shape)) __pyx_t_9 = 0;
-  if (__pyx_t_8 < 0) {
-    __pyx_t_8 += __pyx_pybuffernd_nbuffer.diminfo[1].shape;
-    if (unlikely(__pyx_t_8 < 0)) __pyx_t_9 = 1;
-  } else if (unlikely(__pyx_t_8 >= __pyx_pybuffernd_nbuffer.diminfo[1].shape)) __pyx_t_9 = 1;
-  if (unlikely(__pyx_t_9 != -1)) {
-    __Pyx_RaiseBufferIndexError(__pyx_t_9);
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  }
-  read_first_tile(__pyx_v_name, (&(*__Pyx_BufPtrCContig2d(__pyx_t_5numpy_int16_t *, __pyx_pybuffernd_nbuffer.rcbuffer->pybuffer.buf, __pyx_t_7, __pyx_pybuffernd_nbuffer.diminfo[0].strides, __pyx_t_8, __pyx_pybuffernd_nbuffer.diminfo[1].strides))));
+  read_first_tile(__pyx_v_name, ((void *)__pyx_v_nbuffer->data));
 
   /* "pytiff.pyx":19
  *   cdef np.ndarray[np.int16_t, ndim=2, mode="c"] nbuffer = np.zeros((width,length), dtype =np.int16)
- *   ctiff.read_first_tile(name, &nbuffer[0,0])
+ *   ctiff.read_first_tile(name, <void *>nbuffer.data)
  *   return nbuffer             # <<<<<<<<<<<<<<
  */
   __Pyx_XDECREF(__pyx_r);
@@ -4789,11 +4768,6 @@ static CYTHON_INLINE void __Pyx_SafeReleaseBuffer(Py_buffer* info) {
   if (info->buf == NULL) return;
   if (info->suboffsets == __Pyx_minusones) info->suboffsets = NULL;
   __Pyx_ReleaseBuffer(info);
-}
-
-static void __Pyx_RaiseBufferIndexError(int axis) {
-  PyErr_Format(PyExc_IndexError,
-     "Out of bounds on buffer access (axis %d)", axis);
 }
 
 static CYTHON_INLINE void __Pyx_ErrRestore(PyObject *type, PyObject *value, PyObject *tb) {
