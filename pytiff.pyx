@@ -80,18 +80,17 @@ cdef class Tiff:
 
     shape = (x_range[1] - x_range[0], y_range[1] - y_range[0])
 
-    start_x = x_range[0] // self.tile_width
-    start_x_offset = x_range[0] % self.tile_width
 
-    start_y = y_range[0] // self.tile_length
-    start_y_offset = y_range[0] % self.tile_length
+    cdef int start_x = x_range[0] // self.tile_width
+    cdef int start_y = y_range[0] // self.tile_length
+    cdef int end_x = ceil(float(x_range[1]) / self.tile_width)
+    cdef int end_y = ceil(float(y_range[1]) / self.tile_length)
+    cdef unsigned int offset_x = start_x * self.tile_width
+    cdef unsigned int offset_y = start_y * self.tile_length
 
-    end_x = ceil(float(x_range[1]) / self.tile_width)
-    end_x_offset = (end_x * self.tile_width) % x_range[1]
+    large = (end_x - start_x) * self.tile_width, (end_y - start_y) * self.tile_length
 
-    end_y = ceil(float(y_range[1]) / self.tile_length)
-    end_y_offset = (end_y * self.tile_length) % y_range[1]
-
+    cdef np.ndarray large_buf = np.zeros(large, dtype=self.dtype)
     cdef np.ndarray arr_buf = np.zeros(shape, dtype=self.dtype)
     cdef unsigned int np_x, np_y
     np_x = 0
@@ -101,33 +100,39 @@ cdef class Tiff:
       for current_x in np.arange(start_x, end_x):
         real_x = current_x * self.tile_width
         real_y = current_y * self.tile_length
-        print("X: {}, Y: {}".format(real_x, real_y))
-        print("np_x: {}, np_y: {}".format(np_x, np_y))
         tmp = self._read_tile(real_x, real_y).T
 
-        if current_x == start_x:
-          tmp = tmp[start_x_offset:, :]
-
-        if current_y == start_y:
-          tmp = tmp[:, start_y_offset:]
-
-        if current_x == end_x - 1:
-          print("x short")
-          tmp = tmp[:self.tile_width-end_x_offset, :]
-
-        if current_y == end_y - 1:
-          tmp = tmp[:, :self.tile_length-end_y_offset]
-
-        print(tmp.shape)
         e_x = np_x + tmp.shape[0]
         e_y = np_y + tmp.shape[1]
 
-        arr_buf[np_x:e_x, np_y:e_y] = tmp
+        large_buf[np_x:e_x, np_y:e_y] = tmp
         np_x += self.tile_width
 
       np_y += self.tile_length
 
+    arr_buf = large_buf[x_range[0]-offset_x:x_range[1]-offset_x, y_range[0]-offset_y:y_range[1]-offset_y]
     return arr_buf
+
+  def __getitem__(self, index):
+    if isinstance(index, slice):
+      index = (index, slice(None,None,None))
+
+    if not isinstance(index[0], slice) or not isinstance(index[1], slice):
+      raise Exception("Only slicing is supported")
+
+    x_range = np.array((index[0].start, index[0].stop))
+    if x_range[0] is None:
+      x_range[0] = 0
+    if x_range[1] is None:
+      x_range[1] = self.image_width
+
+    y_range = np.array((index[0].start, index[1].stop))
+    if y_range[0] is None:
+      y_range[0] = 0
+    if y_range[1] is None:
+      y_range[1] = self.image_length
+
+    return self.get(x_range, y_range)
 
 
 
