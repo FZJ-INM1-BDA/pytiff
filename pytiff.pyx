@@ -89,6 +89,10 @@ cdef class Tiff:
     ctiff.TIFFGetField(self.tiff_handle, 322, &self.tile_width)
     ctiff.TIFFGetField(self.tiff_handle, 323, &self.tile_length)
 
+  @current_page.setter
+  def current_page(self, value):
+    self.set_page(value)
+
   @property
   def number_of_pages(self):
     current_dir = self.current_page
