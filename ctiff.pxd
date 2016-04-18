@@ -13,9 +13,15 @@ cdef extern from "tiffio.h":
   ctypedef int tsize_t
   ctypedef void* tdata_t
   ctypedef unsigned short tsample_t
+  ctypedef unsigned short tdir_t
 
   # functions
+  # general functions
   int TIFFGetField(TIFF*, ttag_t, ...)
   TIFF* TIFFOpen(const char*, const char*)
   void TIFFClose(TIFF*)
   tsize_t TIFFReadTile(TIFF* tif, tdata_t buf, unsigned int x, unsigned int y, unsigned int z, tsample_t sample)
+  # directory functions
+  tdir_t TIFFCurrentDirectory(TIFF* tif)
+  int TIFFSetDirectory(TIFF* tif, tdir_t dir)
+  int TIFFReadDirectory(TIFF* tif)

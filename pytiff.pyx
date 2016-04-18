@@ -3,19 +3,42 @@ from libcpp.string cimport string
 from cpython cimport bool
 cimport numpy as np
 import numpy as np
-
 from math import ceil
 
+TYPE_MAP = {
+  1: {
+    8: np.uint8,
+    16: np.uint16,
+    32: np.uint32,
+    64: np.uint64
+  },
+  2: {
+    8: np.int8,
+    16: np.int16,
+    32: np.int32,
+    64: np.int64
+  },
+  3: {
+    8: None,
+    16: np.float16,
+    32: np.float32,
+    64: np.float64
+  }
+}
+
+cdef unsigned int SAMPLE_FORMAT = 339
+cdef unsigned int SAMPLES_PER_PIXEL = 277
 cdef class Tiff:
   cdef ctiff.TIFF* tiff_handle
   cdef public short samples_per_pixel
   cdef short[:] n_bits_view
-  cdef short sample_format
+  cdef short sample_format, n_pages
   cdef bool closed
   cdef unsigned int image_width, image_length, tile_width, tile_length
 
   def __cinit__(self, const string filename):
     self.closed = False
+    self.n_pages = 0
     self.tiff_handle = ctiff.TIFFOpen(filename.c_str(), "r")
     self.samples_per_pixel = 1
     ctiff.TIFFGetField(self.tiff_handle, 277, &self.samples_per_pixel)
@@ -23,7 +46,7 @@ cdef class Tiff:
     ctiff.TIFFGetField(self.tiff_handle, 258, <ctiff.ttag_t*>bits_buffer.data)
     self.n_bits_view = bits_buffer
 
-    self.sample_format = -5
+    self.sample_format = 1
     ctiff.TIFFGetField(self.tiff_handle, 339, &self.sample_format)
 
     ctiff.TIFFGetField(self.tiff_handle, 256, &self.image_width)
@@ -52,14 +75,32 @@ cdef class Tiff:
 
   @property
   def dtype(self):
-    if self.n_bits[0] == 8:
-      return np.uint8
-    elif self.n_bits[0] == 16:
-      return np.uint16
-    elif self.n_bits[0] == 32:
-      return np.uint32
-    elif self.n_bits[0] == 64:
-      return np.uint64
+    return TYPE_MAP[self.sample_format][self.n_bits[0]]
+
+  @property
+  def current_page(self):
+    return ctiff.TIFFCurrentDirectory(self.tiff_handle)
+
+  def set_page(self, value):
+    ctiff.TIFFSetDirectory(self.tiff_handle, value)
+    ctiff.TIFFGetField(self.tiff_handle, 256, &self.image_width)
+    ctiff.TIFFGetField(self.tiff_handle, 257, &self.image_length)
+
+    ctiff.TIFFGetField(self.tiff_handle, 322, &self.tile_width)
+    ctiff.TIFFGetField(self.tiff_handle, 323, &self.tile_length)
+
+  @property
+  def number_of_pages(self):
+    current_dir = self.current_page
+    if self.n_pages != 0:
+      return self.n_pages
+    else:
+      cont = 1
+      while cont:
+        self.n_pages += 1
+        cont = ctiff.TIFFReadDirectory(self.tiff_handle)
+      ctiff.TIFFSetDirectory(self.tiff_handle, current_dir)
+    return self.n_pages
 
   def __enter__(self):
     return self
@@ -81,12 +122,12 @@ cdef class Tiff:
     shape = (x_range[1] - x_range[0], y_range[1] - y_range[0])
 
 
-    cdef int start_x = x_range[0] // self.tile_width
-    cdef int start_y = y_range[0] // self.tile_length
-    cdef int end_x = ceil(float(x_range[1]) / self.tile_width)
-    cdef int end_y = ceil(float(y_range[1]) / self.tile_length)
-    cdef unsigned int offset_x = start_x * self.tile_width
-    cdef unsigned int offset_y = start_y * self.tile_length
+    start_x = x_range[0] // self.tile_width
+    start_y = y_range[0] // self.tile_length
+    end_x = ceil(float(x_range[1]) / self.tile_width)
+    end_y = ceil(float(y_range[1]) / self.tile_length)
+    offset_x = start_x * self.tile_width
+    offset_y = start_y * self.tile_length
 
     large = (end_x - start_x) * self.tile_width, (end_y - start_y) * self.tile_length
 
@@ -114,8 +155,14 @@ cdef class Tiff:
     return arr_buf
 
   def __getitem__(self, index):
-    if isinstance(index, slice):
-      index = (index, slice(None,None,None))
+    if not isinstance(index, tuple):
+      if isinstance(index, slice):
+        index = (index, slice(None,None,None))
+      else:
+        raise Exception("Only slicing is supported")
+    elif len(index) < 3:
+      index = index[0],index[1],0
+
 
     if not isinstance(index[0], slice) or not isinstance(index[1], slice):
       raise Exception("Only slicing is supported")
@@ -126,15 +173,13 @@ cdef class Tiff:
     if x_range[1] is None:
       x_range[1] = self.image_width
 
-    y_range = np.array((index[0].start, index[1].stop))
+    y_range = np.array((index[1].start, index[1].stop))
     if y_range[0] is None:
       y_range[0] = 0
     if y_range[1] is None:
       y_range[1] = self.image_length
 
     return self.get(x_range, y_range)
-
-
 
   def _read_tile(self, unsigned int x, unsigned int y):
     cdef np.ndarray buffer = np.zeros((self.tile_width, self.tile_length),dtype=self.dtype)
