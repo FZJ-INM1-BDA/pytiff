@@ -25,3 +25,4 @@ cdef extern from "tiffio.h":
   tdir_t TIFFCurrentDirectory(TIFF* tif)
   int TIFFSetDirectory(TIFF* tif, tdir_t dir)
   int TIFFReadDirectory(TIFF* tif)
+  tdir_t TIFFNumberOfDirectories(TIFF* tiff)

@@ -40,6 +40,9 @@ cdef class Tiff:
     self.closed = False
     self.n_pages = 0
     self.tiff_handle = ctiff.TIFFOpen(filename.c_str(), "r")
+    self._init_page()
+
+  def _init_page(self):
     self.samples_per_pixel = 1
     ctiff.TIFFGetField(self.tiff_handle, 277, &self.samples_per_pixel)
     cdef np.ndarray[np.int16_t, ndim=1] bits_buffer = np.zeros(self.samples_per_pixel, dtype=np.int16)
@@ -83,18 +86,13 @@ cdef class Tiff:
 
   def set_page(self, value):
     ctiff.TIFFSetDirectory(self.tiff_handle, value)
-    ctiff.TIFFGetField(self.tiff_handle, 256, &self.image_width)
-    ctiff.TIFFGetField(self.tiff_handle, 257, &self.image_length)
-
-    ctiff.TIFFGetField(self.tiff_handle, 322, &self.tile_width)
-    ctiff.TIFFGetField(self.tiff_handle, 323, &self.tile_length)
-
-  @current_page.setter
-  def current_page(self, value):
-    self.set_page(value)
+    self._init_page()
 
   @property
   def number_of_pages(self):
+    # dont use
+    # fails if only one directory
+    # ctiff.TIFFNumberOfDirectories(self.tiff_handle)
     current_dir = self.current_page
     if self.n_pages != 0:
       return self.n_pages
