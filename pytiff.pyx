@@ -28,6 +28,11 @@ TYPE_MAP = {
 
 cdef unsigned int SAMPLE_FORMAT = 339
 cdef unsigned int SAMPLES_PER_PIXEL = 277
+cdef unsigned int BITSPERSAMPLE = 258
+cdef unsigned int IMAGEWIDTH = 256
+cdef unsigned int IMAGELENGTH = 257
+cdef unsigned int TILEWIDTH = 322
+cdef unsigned int TILELENGTH = 323
 
 cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp):
   shape = (inp.shape[0], inp.shape[1], 4)
@@ -53,6 +58,8 @@ cdef class Tiff:
   cdef unsigned int image_width, image_length, tile_width, tile_length
 
   def __cinit__(self, const string filename):
+    """Opens a tiff image and is able to read chunks of tiled images.
+    """
     self.closed = False
     self.n_pages = 0
     self.tiff_handle = ctiff.TIFFOpen(filename.c_str(), "r")
@@ -60,21 +67,23 @@ cdef class Tiff:
 
   def _init_page(self):
     self.samples_per_pixel = 1
-    ctiff.TIFFGetField(self.tiff_handle, 277, &self.samples_per_pixel)
+    ctiff.TIFFGetField(self.tiff_handle, SAMPLES_PER_PIXEL, &self.samples_per_pixel)
     cdef np.ndarray[np.int16_t, ndim=1] bits_buffer = np.zeros(self.samples_per_pixel, dtype=np.int16)
-    ctiff.TIFFGetField(self.tiff_handle, 258, <ctiff.ttag_t*>bits_buffer.data)
+    ctiff.TIFFGetField(self.tiff_handle, BITSPERSAMPLE, <ctiff.ttag_t*>bits_buffer.data)
     self.n_bits_view = bits_buffer
 
     self.sample_format = 1
-    ctiff.TIFFGetField(self.tiff_handle, 339, &self.sample_format)
+    ctiff.TIFFGetField(self.tiff_handle, SAMPLE_FORMAT, &self.sample_format)
 
-    ctiff.TIFFGetField(self.tiff_handle, 256, &self.image_width)
-    ctiff.TIFFGetField(self.tiff_handle, 257, &self.image_length)
+    ctiff.TIFFGetField(self.tiff_handle, IMAGEWIDTH, &self.image_width)
+    ctiff.TIFFGetField(self.tiff_handle, IMAGELENGTH, &self.image_length)
 
-    ctiff.TIFFGetField(self.tiff_handle, 322, &self.tile_width)
-    ctiff.TIFFGetField(self.tiff_handle, 323, &self.tile_length)
+    ctiff.TIFFGetField(self.tiff_handle, TILEWIDTH, &self.tile_width)
+    ctiff.TIFFGetField(self.tiff_handle, TILELENGTH, &self.tile_length)
 
   def close(self):
+    """Close the filehandle.
+    """
     if not self.closed:
       ctiff.TIFFClose(self.tiff_handle)
       self.closed = True
@@ -85,7 +94,16 @@ cdef class Tiff:
       ctiff.TIFFClose(self.tiff_handle)
 
   @property
+  def mode(self):
+    """Mode of the current image. Can either be 'rgb' or 'greyscale'"""
+    if self.samples_per_pixel > 1:
+      return "rgb"
+    else:
+      return "greyscale"
+
+  @property
   def size(self):
+    """Returns a tuple with the current image size"""
     return self.image_width, self.image_length
 
   @property
@@ -94,6 +112,8 @@ cdef class Tiff:
 
   @property
   def dtype(self):
+    if self.mode == "rgb":
+      return np.uint8
     return TYPE_MAP[self.sample_format][self.n_bits[0]]
 
   @property
@@ -126,6 +146,16 @@ cdef class Tiff:
 
   def __exit__(self, type, value, traceback):
     self.close()
+
+  def load(self):
+    cdef np.ndarray buffer
+    if self.samples_per_pixel > 1:
+      shape = self.tile_width, self.tile_length
+      buffer = np.zeros(shape, dtype=np.uint32)
+      ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
+      rgb = _get_rgb(buffer)
+      return rgb
+
 
   def get(self, x_range=None, y_range=None):
     if not self.tile_width:
