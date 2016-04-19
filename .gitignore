@@ -174,3 +174,7 @@ ENV/
 
 # data
 *.tif
+
+# auto generated code
+*.cpp
+*.c
