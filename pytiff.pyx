@@ -146,15 +146,15 @@ cdef class Tiff:
   def __exit__(self, type, value, traceback):
     self.close()
 
-  def load(self):
+  def load_rgb(self):
     cdef np.ndarray buffer
     if self.samples_per_pixel > 1:
-      shape = self.tile_width, self.tile_length
+      shape = self.image_length, self.image_width
       buffer = np.zeros(shape, dtype=np.uint32)
       ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
       rgb = _get_rgb(buffer)
-      return rgb
-
+      return np.flipud(rgb)
+    raise Exception("No rgb image")
 
   def get(self, x_range=None, y_range=None):
     if not self.tile_width:
