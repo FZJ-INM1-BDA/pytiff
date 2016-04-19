@@ -26,3 +26,9 @@ cdef extern from "tiffio.h":
   int TIFFSetDirectory(TIFF* tif, tdir_t dir)
   int TIFFReadDirectory(TIFF* tif)
   tdir_t TIFFNumberOfDirectories(TIFF* tiff)
+  #RGBA functions
+  int TIFFReadRGBATile(TIFF* tif, unsigned int x, unsigned int y, unsigned int* raster)
+  unsigned short TIFFGetR(unsigned int pixel)
+  unsigned short TIFFGetG(unsigned int pixel)
+  unsigned short TIFFGetB(unsigned int pixel)
+  unsigned short TIFFGetA(unsigned int pixel)
