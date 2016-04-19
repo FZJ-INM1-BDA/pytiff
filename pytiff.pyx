@@ -133,7 +133,6 @@ cdef class Tiff:
     if self.n_pages != 0:
       return self.n_pages
     else:
-      ctiff.TIFFSetDirectory(self.tiff_handle, 0)
       cont = 1
       while cont:
         self.n_pages += 1
