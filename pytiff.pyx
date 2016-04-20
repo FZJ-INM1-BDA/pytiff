@@ -157,21 +157,24 @@ cdef class Tiff:
     raise Exception("No rgb image")
 
   def get(self, x_range=None, y_range=None):
-    if not self.tile_width:
-      raise Exception("Image is not tiled!")
     cdef unsigned int z_size, start_x, start_y, start_x_offset, start_y_offset
     cdef unsigned int end_x, end_y, end_x_offset, end_y_offset
 
     # use rgba if no greyscale image
     z_size = 1
-    if self.samples_per_pixel > 1:
-      z_size = 4
 
     if x_range is None:
       x_range = (0, self.image_width)
     if y_range is None:
       y_range = (0, self.image_length)
 
+    # **** load rgb image, all at once ****
+    if self.mode == "rgb":
+      tmp = self.load_rgb()
+      return tmp[y_range[0]:y_range[1], x_range[0]:x_range[1]]
+    # ********* rgb part *********
+    if not self.tile_width:
+      raise Exception("Image is not tiled!")
     shape = (x_range[1] - x_range[0], y_range[1] - y_range[0], z_size)
 
     start_x = x_range[0] // self.tile_width
