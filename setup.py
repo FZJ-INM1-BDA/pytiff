@@ -9,8 +9,10 @@ setup(
         Extension("pytiff", ["pytiff.pyx"],
         libraries=["tiff"],
         include_dirs=[".", numpy.get_include()],
-        language="c++"
+        language="c++",
         )
     ]),
-    cmdclass = {"build_ext": build_ext}
+    cmdclass = {"build_ext": build_ext},
+    name="pytiff",
+    version="0.1dev"
 )
