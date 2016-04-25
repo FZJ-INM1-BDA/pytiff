@@ -104,7 +104,7 @@ cdef class Tiff:
   @property
   def size(self):
     """Returns a tuple with the current image size"""
-    return self.image_width, self.image_length
+    return self.image_length, self.image_width
 
   @property
   def n_bits(self):
