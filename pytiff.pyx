@@ -1,3 +1,9 @@
+"""
+pytiff is a python wrapper for the libtiff c api written in cython. It is python 2 and 3 compatible.
+While there are some missing features, it supports reading chunks of tiled greyscale tif images as well as basic reading for color images.
+Apart from that multipage tiffs are supported.
+"""
+
 cimport ctiff
 from libcpp.string cimport string
 from cpython cimport bool
@@ -58,7 +64,21 @@ cdef class Tiff:
   cdef unsigned int image_width, image_length, tile_width, tile_length
 
   def __cinit__(self, const string filename):
-    """Opens a tiff image and is able to read chunks of tiled images.
+    """The Tiff class handles tiff files.
+
+    The class is able to read chunked greyscale images as well as basic reading of color images.
+    Currently writing tiff files is not supported.
+
+    Examples:
+      >>> with pytiff.Tiff("tiff_file.tif") as f:
+      >>>   chunk = f[100:300, 50:100]
+      >>>   print(type(chunk))
+      >>>   print(chunk.shape)
+      numpy.ndarray
+      (200, 50)
+
+    Args:
+      filename (string): The filename of the tiff file.
     """
     self.closed = False
     self.n_pages = 0
@@ -66,6 +86,7 @@ cdef class Tiff:
     self._init_page()
 
   def _init_page(self):
+    """Initialize page specific attributes."""
     self.samples_per_pixel = 1
     ctiff.TIFFGetField(self.tiff_handle, SAMPLES_PER_PIXEL, &self.samples_per_pixel)
     cdef np.ndarray[np.int16_t, ndim=1] bits_buffer = np.zeros(self.samples_per_pixel, dtype=np.int16)
@@ -82,8 +103,7 @@ cdef class Tiff:
     ctiff.TIFFGetField(self.tiff_handle, TILELENGTH, &self.tile_length)
 
   def close(self):
-    """Close the filehandle.
-    """
+    """Close the filehandle."""
     if not self.closed:
       ctiff.TIFFClose(self.tiff_handle)
       self.closed = True
@@ -95,7 +115,11 @@ cdef class Tiff:
 
   @property
   def mode(self):
-    """Mode of the current image. Can either be 'rgb' or 'greyscale'"""
+    """Mode of the current image. Can either be 'rgb' or 'greyscale'.
+
+    'rgb' is returned if the sampels per pixel are larger than 1. This means 'rgb' is always returned
+    if the image is not 'greyscale'.
+    """
     if self.samples_per_pixel > 1:
       return "rgb"
     else:
@@ -103,29 +127,66 @@ cdef class Tiff:
 
   @property
   def size(self):
-    """Returns a tuple with the current image size"""
+    """Returns a tuple with the current image size.
+
+    size is equal to numpys shape attribute.
+
+    Returns:
+      tuple: `(image height, image width)`
+
+      This is equal to:
+      `(number_of_rows, number_of_columns)`
+    """
     return self.image_length, self.image_width
 
   @property
   def n_bits(self):
+    """Returns an array with the bit size for each sample of a pixel."""
     return np.array(self.n_bits_view)
 
   @property
   def dtype(self):
+    """Maps the image data type to an according numpy type.
+
+    Returns:
+      type: numpy dtype of the image.
+
+      If the mode is 'rgb', the dtype is always uint8. Most times a rgb image is saved as a
+      uint32 array. One value is containing all four values of an RGBA image. Thus the dtype of the numpy array
+      is uint8.
+
+      If the mode is 'greyscale', the dtype is the type of the first sample.
+      Since greyscale images only have one sample per pixel, this resembles the general dtype.
+    """
     if self.mode == "rgb":
       return np.uint8
     return TYPE_MAP[self.sample_format][self.n_bits[0]]
 
   @property
   def current_page(self):
+    """Current page/directory of the tiff file.
+
+    Returns:
+      int: index of the current page/directory.
+    """
     return ctiff.TIFFCurrentDirectory(self.tiff_handle)
 
   def set_page(self, value):
+    """Set the page/directory of the tiff file.
+
+    Args:
+      value (int): page index
+    """
     ctiff.TIFFSetDirectory(self.tiff_handle, value)
     self._init_page()
 
   @property
   def number_of_pages(self):
+    """number of pages/directories in the tiff file.
+
+    Returns:
+      int: number of pages/directories
+    """
     # dont use
     # fails if only one directory
     # ctiff.TIFFNumberOfDirectories(self.tiff_handle)
@@ -147,6 +208,7 @@ cdef class Tiff:
     self.close()
 
   def load_rgb(self):
+    """Loads a RGB(A) image at once."""
     cdef np.ndarray buffer
     if self.samples_per_pixel > 1:
       shape = self.image_length, self.image_width
@@ -157,6 +219,15 @@ cdef class Tiff:
     raise Exception("No rgb image")
 
   def get(self, x_range=None, y_range=None):
+    """Function to load a chunk of an image.
+
+    Should not be used. Instead use numpy style slicing.
+
+    Examples:
+      >>> with pytiff.Tiff("tiffile.tif") as f:
+      >>>   total = f[:, :] # f[:]
+      >>>   part = f[100:200,:]
+    """
     cdef unsigned int z_size, start_x, start_y, start_x_offset, start_y_offset
     cdef unsigned int end_x, end_y, end_x_offset, end_y_offset
 
