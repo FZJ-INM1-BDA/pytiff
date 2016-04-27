@@ -178,3 +178,5 @@ ENV/
 # auto generated code
 *.cpp
 *.c
+
+*.ipynb
