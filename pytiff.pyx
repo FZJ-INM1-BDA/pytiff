@@ -215,7 +215,13 @@ cdef class Tiff:
 
   @property
   def n_samples(self):
-    return self.samples_per_pixel - self.extra_samples
+    cdef short samples_in_file = self.samples_per_pixel - self.extra_samples
+    cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, samples_in_file),dtype=self.dtype).squeeze()
+    cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, 0, 0, 0, 0)
+    if bytes != -1:
+      return samples_in_file
+    else:
+      return 4
 
   def __enter__(self):
     return self

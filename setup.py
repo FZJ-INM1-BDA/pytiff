@@ -14,5 +14,5 @@ setup(
     ]),
     cmdclass = {"build_ext": build_ext},
     name="pytiff",
-    version="0.2.0"
+    version="0.2.1"
 )
