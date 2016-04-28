@@ -221,10 +221,10 @@ cdef class Tiff:
     cdef short samples_in_file = self.samples_per_pixel - self.extra_samples
     cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, samples_in_file),dtype=self.dtype).squeeze()
     cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, 0, 0, 0, 0)
-    if bytes != -1:
-      return samples_in_file
-    else:
+    if bytes == -1 or not self.tile_width:
       return 4
+    else:
+      return samples_in_file
 
   def __enter__(self):
     return self
@@ -305,6 +305,7 @@ cdef class Tiff:
     try:
       res = self.load_tiled(y_range, x_range)
     except NotTiledError as e:
+      print(e.message)
       print("Warning: chunks not available! Loading all data!")
       tmp = self.load_all()
       res = tmp[y_range[0]:y_range[1], x_range[0]:x_range[1]]
