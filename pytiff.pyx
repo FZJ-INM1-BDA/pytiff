@@ -234,29 +234,15 @@ cdef class Tiff:
       return np.flipud(rgb)
     raise Exception("No rgb image")
 
-  def get(self, y_range=None, x_range=None):
-    """Function to load a chunk of an image.
-
-    Should not be used. Instead use numpy style slicing.
-
-    Examples:
-      >>> with pytiff.Tiff("tiffile.tif") as f:
-      >>>   total = f[:, :] # f[:]
-      >>>   part = f[100:200,:]
-    """
+  def load_tiled(self, y_range, x_range):
     cdef unsigned int z_size, start_x, start_y, start_x_offset, start_y_offset
     cdef unsigned int end_x, end_y, end_x_offset, end_y_offset
+    if not self.tile_width:
+      raise NotTiledError("Image is not tiled!")
 
     # use rgba if no greyscale image
     z_size = self.n_samples
 
-    if x_range is None:
-      x_range = (0, self.image_width)
-    if y_range is None:
-      y_range = (0, self.image_length)
-
-    if not self.tile_width:
-      raise NotTiledError("Image is not tiled!")
     shape = (y_range[1] - y_range[0], x_range[1] - x_range[0], z_size)
 
     start_x = x_range[0] // self.tile_width
@@ -273,27 +259,48 @@ cdef class Tiff:
     cdef unsigned int np_x, np_y
     np_x = 0
     np_y = 0
-    try:
-      for current_y in np.arange(start_y, end_y):
-        np_x = 0
-        for current_x in np.arange(start_x, end_x):
-          real_x = current_x * self.tile_width
-          real_y = current_y * self.tile_length
-          tmp = self._read_tile(real_y, real_x)
-          e_x = np_x + tmp.shape[1]
-          e_y = np_y + tmp.shape[0]
+    for current_y in np.arange(start_y, end_y):
+      np_x = 0
+      for current_x in np.arange(start_x, end_x):
+        real_x = current_x * self.tile_width
+        real_y = current_y * self.tile_length
+        tmp = self._read_tile(real_y, real_x)
+        e_x = np_x + tmp.shape[1]
+        e_y = np_y + tmp.shape[0]
 
-          large_buf[np_y:e_y, np_x:e_x] = tmp
-          np_x += self.tile_width
+        large_buf[np_y:e_y, np_x:e_x] = tmp
+        np_x += self.tile_width
 
-        np_y += self.tile_length
-    except NotTiledError as e:
-      print("Warning: chunks not available! Loading all data!")
-      tmp = self.load_all()
-      return tmp[y_range[0]:y_range[1], x_range[0]:x_range[1]]
+      np_y += self.tile_length
 
     arr_buf = large_buf[y_range[0]-offset_y:y_range[1]-offset_y, x_range[0]-offset_x:x_range[1]-offset_x]
     return arr_buf
+
+  def get(self, y_range=None, x_range=None):
+    """Function to load a chunk of an image.
+
+    Should not be used. Instead use numpy style slicing.
+
+    Examples:
+      >>> with pytiff.Tiff("tiffile.tif") as f:
+      >>>   total = f[:, :] # f[:]
+      >>>   part = f[100:200,:]
+    """
+
+    if x_range is None:
+      x_range = (0, self.image_width)
+    if y_range is None:
+      y_range = (0, self.image_length)
+
+    cdef np.ndarray res, tmp
+    try:
+      res = self.load_tiled(y_range, x_range)
+    except NotTiledError as e:
+      print("Warning: chunks not available! Loading all data!")
+      tmp = self.load_all()
+      res = tmp[y_range[0]:y_range[1], x_range[0]:x_range[1]]
+
+    return res
 
   def __getitem__(self, index):
     if not isinstance(index, tuple):
