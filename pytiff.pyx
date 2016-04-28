@@ -39,6 +39,11 @@ cdef unsigned int IMAGEWIDTH = 256
 cdef unsigned int IMAGELENGTH = 257
 cdef unsigned int TILEWIDTH = 322
 cdef unsigned int TILELENGTH = 323
+cdef unsigned int EXTRA_SAMPLES = 338
+
+class NotTiledError(Exception):
+  def __init__(self, message):
+    self.message = message
 
 cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp):
   shape = (inp.shape[0], inp.shape[1], 4)
@@ -54,12 +59,11 @@ cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp):
 
   return rgb
 
-
 cdef class Tiff:
   cdef ctiff.TIFF* tiff_handle
   cdef public short samples_per_pixel
   cdef short[:] n_bits_view
-  cdef short sample_format, n_pages
+  cdef short sample_format, n_pages, extra_samples
   cdef bool closed
   cdef unsigned int image_width, image_length, tile_width, tile_length
 
@@ -101,6 +105,14 @@ cdef class Tiff:
 
     ctiff.TIFFGetField(self.tiff_handle, TILEWIDTH, &self.tile_width)
     ctiff.TIFFGetField(self.tiff_handle, TILELENGTH, &self.tile_length)
+
+    # get extra samples
+    cdef np.ndarray[np.int16_t, ndim=1] extra = -np.ones(self.samples_per_pixel, dtype=np.int16)
+    ctiff.TIFFGetField(self.tiff_handle, EXTRA_SAMPLES, <short *>extra.data)
+    self.extra_samples = 0
+    for i in range(self.samples_per_pixel):
+      if extra[i] != -1:
+        self.extra_samples += 1
 
   def close(self):
     """Close the filehandle."""
@@ -201,13 +213,17 @@ cdef class Tiff:
       ctiff.TIFFSetDirectory(self.tiff_handle, current_dir)
     return self.n_pages
 
+  @property
+  def n_samples(self):
+    return self.samples_per_pixel - self.extra_samples
+
   def __enter__(self):
     return self
 
   def __exit__(self, type, value, traceback):
     self.close()
 
-  def load_rgb(self):
+  def load_all(self):
     """Loads a RGB(A) image at once."""
     cdef np.ndarray buffer
     if self.samples_per_pixel > 1:
@@ -218,35 +234,16 @@ cdef class Tiff:
       return np.flipud(rgb)
     raise Exception("No rgb image")
 
-  def get(self, x_range=None, y_range=None):
-    """Function to load a chunk of an image.
-
-    Should not be used. Instead use numpy style slicing.
-
-    Examples:
-      >>> with pytiff.Tiff("tiffile.tif") as f:
-      >>>   total = f[:, :] # f[:]
-      >>>   part = f[100:200,:]
-    """
+  def load_tiled(self, y_range, x_range):
     cdef unsigned int z_size, start_x, start_y, start_x_offset, start_y_offset
     cdef unsigned int end_x, end_y, end_x_offset, end_y_offset
+    if not self.tile_width:
+      raise NotTiledError("Image is not tiled!")
 
     # use rgba if no greyscale image
-    z_size = 1
+    z_size = self.n_samples
 
-    if x_range is None:
-      x_range = (0, self.image_width)
-    if y_range is None:
-      y_range = (0, self.image_length)
-
-    # **** load rgb image, all at once ****
-    if self.mode == "rgb":
-      tmp = self.load_rgb()
-      return tmp[y_range[0]:y_range[1], x_range[0]:x_range[1]]
-    # ********* rgb part *********
-    if not self.tile_width:
-      raise Exception("Image is not tiled!")
-    shape = (x_range[1] - x_range[0], y_range[1] - y_range[0], z_size)
+    shape = (y_range[1] - y_range[0], x_range[1] - x_range[0], z_size)
 
     start_x = x_range[0] // self.tile_width
     start_y = y_range[0] // self.tile_length
@@ -255,7 +252,7 @@ cdef class Tiff:
     offset_x = start_x * self.tile_width
     offset_y = start_y * self.tile_length
 
-    large = (end_x - start_x) * self.tile_width, (end_y - start_y) * self.tile_length, z_size
+    large = (end_y - start_y) * self.tile_length, (end_x - start_x) * self.tile_width, z_size
 
     cdef np.ndarray large_buf = np.zeros(large, dtype=self.dtype).squeeze()
     cdef np.ndarray arr_buf = np.zeros(shape, dtype=self.dtype).squeeze()
@@ -267,22 +264,43 @@ cdef class Tiff:
       for current_x in np.arange(start_x, end_x):
         real_x = current_x * self.tile_width
         real_y = current_y * self.tile_length
-        tmp = self._read_tile(real_x, real_y)
-        e_x = np_x + tmp.shape[0]
-        e_y = np_y + tmp.shape[1]
+        tmp = self._read_tile(real_y, real_x)
+        e_x = np_x + tmp.shape[1]
+        e_y = np_y + tmp.shape[0]
 
-        large_buf[np_x:e_x, np_y:e_y] = tmp
+        large_buf[np_y:e_y, np_x:e_x] = tmp
         np_x += self.tile_width
 
       np_y += self.tile_length
 
-    arr_buf = large_buf[x_range[0]-offset_x:x_range[1]-offset_x, y_range[0]-offset_y:y_range[1]-offset_y]
-    if arr_buf.ndim == 2:
-      dims = (1,0)
-    else:
-      dims = (1,0,2)
+    arr_buf = large_buf[y_range[0]-offset_y:y_range[1]-offset_y, x_range[0]-offset_x:x_range[1]-offset_x]
+    return arr_buf
 
-    return arr_buf.transpose(dims)
+  def get(self, y_range=None, x_range=None):
+    """Function to load a chunk of an image.
+
+    Should not be used. Instead use numpy style slicing.
+
+    Examples:
+      >>> with pytiff.Tiff("tiffile.tif") as f:
+      >>>   total = f[:, :] # f[:]
+      >>>   part = f[100:200,:]
+    """
+
+    if x_range is None:
+      x_range = (0, self.image_width)
+    if y_range is None:
+      y_range = (0, self.image_length)
+
+    cdef np.ndarray res, tmp
+    try:
+      res = self.load_tiled(y_range, x_range)
+    except NotTiledError as e:
+      print("Warning: chunks not available! Loading all data!")
+      tmp = self.load_all()
+      res = tmp[y_range[0]:y_range[1], x_range[0]:x_range[1]]
+
+    return res
 
   def __getitem__(self, index):
     if not isinstance(index, tuple):
@@ -308,20 +326,11 @@ cdef class Tiff:
     if y_range[1] is None:
       y_range[1] = self.image_length
 
-    return self.get(x_range, y_range)
+    return self.get(y_range, x_range)
 
-  cdef _read_tile(self, unsigned int x, unsigned int y):
-    if self.samples_per_pixel > 1:
-      return self._read_rgb_tile(x, y)
-    cdef np.ndarray buffer = np.zeros((self.tile_width, self.tile_length),dtype=self.dtype)
+  cdef _read_tile(self, unsigned int y, unsigned int x):
+    cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.n_samples),dtype=self.dtype).squeeze()
     cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, x, y, 0, 0)
-    buffer = buffer.T
     if bytes == -1:
-      raise Exception("Tiled reading not possible")
+      raise NotTiledError("Tiled reading not possible")
     return buffer
-
-  cdef _read_rgb_tile(self, unsigned int x, unsigned int y):
-    cdef np.ndarray[np.uint32_t, ndim=2] buffer = np.zeros((self.tile_width, self.tile_length), dtype=np.uint32)
-    cdef ctiff.tsize_t bytes = ctiff.TIFFReadRGBATile(self.tiff_handle, x, y, <unsigned int *>buffer.data)
-    cdef np.ndarray[np.uint8_t, ndim=3] rgb_buffer = _get_rgb(buffer)
-    return rgb_buffer.transpose(1,0,2)
