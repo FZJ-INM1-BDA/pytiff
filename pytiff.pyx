@@ -84,9 +84,12 @@ cdef class Tiff:
     Args:
       filename (string): The filename of the tiff file.
     """
-    self.closed = False
+    self.closed = True
     self.n_pages = 0
     self.tiff_handle = ctiff.TIFFOpen(filename.c_str(), "r")
+    if self.tiff_handle is NULL:
+      raise IOError("file not found!")
+    self.closed = False
     self._init_page()
 
   def _init_page(self):
