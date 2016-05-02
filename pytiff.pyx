@@ -64,8 +64,9 @@ cdef class Tiff:
   cdef public short samples_per_pixel
   cdef short[:] n_bits_view
   cdef short sample_format, n_pages, extra_samples
-  cdef bool closed
+  cdef bool closed, cached
   cdef unsigned int image_width, image_length, tile_width, tile_length
+  cdef object cache
 
   def __cinit__(self, const string filename):
     """The Tiff class handles tiff files.
@@ -116,6 +117,8 @@ cdef class Tiff:
     for i in range(self.samples_per_pixel):
       if extra[i] != -1:
         self.extra_samples += 1
+
+    self.cached = False
 
   def close(self):
     """Close the filehandle."""
@@ -236,11 +239,15 @@ cdef class Tiff:
     """Loads a RGB(A) image at once."""
     cdef np.ndarray buffer
     if self.samples_per_pixel > 1:
+      if self.cached:
+        return self.cache
       shape = self.image_length, self.image_width
       buffer = np.zeros(shape, dtype=np.uint32)
       ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
       rgb = _get_rgb(buffer)
-      return np.flipud(rgb)
+      self.cache = np.flipud(rgb)
+      self.cached = True
+      return self.cache
     raise Exception("No rgb image")
 
   def load_tiled(self, y_range, x_range):
