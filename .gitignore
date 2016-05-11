@@ -180,3 +180,6 @@ ENV/
 *.c
 
 *.ipynb
+
+# Documentation
+doc/_build
