@@ -60,6 +60,22 @@ cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp):
   return rgb
 
 cdef class Tiff:
+  """The Tiff class handles tiff files.
+
+  The class is able to read chunked greyscale images as well as basic reading of color images.
+  Currently writing tiff files is not supported.
+
+  Examples:
+    >>> with pytiff.Tiff("tiff_file.tif") as f:
+    >>>   chunk = f[100:300, 50:100]
+    >>>   print(type(chunk))
+    >>>   print(chunk.shape)
+    numpy.ndarray
+    (200, 50)
+
+  Args:
+    filename (string): The filename of the tiff file.
+  """
   cdef ctiff.TIFF* tiff_handle
   cdef public short samples_per_pixel
   cdef short[:] n_bits_view
@@ -69,22 +85,6 @@ cdef class Tiff:
   cdef object cache
 
   def __cinit__(self, const string filename):
-    """The Tiff class handles tiff files.
-
-    The class is able to read chunked greyscale images as well as basic reading of color images.
-    Currently writing tiff files is not supported.
-
-    Examples:
-      >>> with pytiff.Tiff("tiff_file.tif") as f:
-      >>>   chunk = f[100:300, 50:100]
-      >>>   print(type(chunk))
-      >>>   print(chunk.shape)
-      numpy.ndarray
-      (200, 50)
-
-    Args:
-      filename (string): The filename of the tiff file.
-    """
     self.closed = True
     self.n_pages = 0
     self.tiff_handle = ctiff.TIFFOpen(filename.c_str(), "r")
