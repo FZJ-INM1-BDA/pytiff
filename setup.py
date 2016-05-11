@@ -6,9 +6,9 @@ import numpy
 
 setup(
     ext_modules = cythonize([
-        Extension("pytiff", ["pytiff.pyx"],
+        Extension("pytiff", ["pytiff/pytiff.pyx"],
         libraries=["tiff"],
-        include_dirs=[".", numpy.get_include()],
+        include_dirs=["./pytiff", numpy.get_include()],
         language="c++",
         )
     ]),

@@ -236,19 +236,17 @@ cdef class Tiff:
     self.close()
 
   def load_all(self):
-    """Loads a RGB(A) image at once."""
+    """Loads an image at once. Returns an RGBA image."""
     cdef np.ndarray buffer
-    if self.samples_per_pixel > 1:
-      if self.cached:
-        return self.cache
-      shape = self.image_length, self.image_width
-      buffer = np.zeros(shape, dtype=np.uint32)
-      ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
-      rgb = _get_rgb(buffer)
-      self.cache = np.flipud(rgb)
-      self.cached = True
+    if self.cached:
       return self.cache
-    raise Exception("No rgb image")
+    shape = self.image_length, self.image_width
+    buffer = np.zeros(shape, dtype=np.uint32)
+    ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
+    rgb = _get_rgb(buffer)
+    self.cache = np.flipud(rgb)
+    self.cached = True
+    return self.cache
 
   def load_tiled(self, y_range, x_range):
     cdef unsigned int z_size, start_x, start_y, start_x_offset, start_y_offset
