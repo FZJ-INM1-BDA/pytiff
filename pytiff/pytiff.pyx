@@ -60,30 +60,31 @@ cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp):
   return rgb
 
 cdef class Tiff:
+  """The Tiff class handles tiff files.
+
+  The class is able to read chunked greyscale images as well as basic reading of color images.
+  Currently writing tiff files is not supported.
+
+  Examples:
+    >>> with pytiff.Tiff("tiff_file.tif") as f:
+    >>>   chunk = f[100:300, 50:100]
+    >>>   print(type(chunk))
+    >>>   print(chunk.shape)
+    numpy.ndarray
+    (200, 50)
+
+  Args:
+    filename (string): The filename of the tiff file.
+  """
   cdef ctiff.TIFF* tiff_handle
   cdef public short samples_per_pixel
   cdef short[:] n_bits_view
   cdef short sample_format, n_pages, extra_samples
-  cdef bool closed
+  cdef bool closed, cached
   cdef unsigned int image_width, image_length, tile_width, tile_length
+  cdef object cache
 
   def __cinit__(self, const string filename):
-    """The Tiff class handles tiff files.
-
-    The class is able to read chunked greyscale images as well as basic reading of color images.
-    Currently writing tiff files is not supported.
-
-    Examples:
-      >>> with pytiff.Tiff("tiff_file.tif") as f:
-      >>>   chunk = f[100:300, 50:100]
-      >>>   print(type(chunk))
-      >>>   print(chunk.shape)
-      numpy.ndarray
-      (200, 50)
-
-    Args:
-      filename (string): The filename of the tiff file.
-    """
     self.closed = True
     self.n_pages = 0
     self.tiff_handle = ctiff.TIFFOpen(filename.c_str(), "r")
@@ -116,6 +117,8 @@ cdef class Tiff:
     for i in range(self.samples_per_pixel):
       if extra[i] != -1:
         self.extra_samples += 1
+
+    self.cached = False
 
   def close(self):
     """Close the filehandle."""
@@ -233,15 +236,17 @@ cdef class Tiff:
     self.close()
 
   def load_all(self):
-    """Loads a RGB(A) image at once."""
+    """Loads an image at once. Returns an RGBA image."""
     cdef np.ndarray buffer
-    if self.samples_per_pixel > 1:
-      shape = self.image_length, self.image_width
-      buffer = np.zeros(shape, dtype=np.uint32)
-      ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
-      rgb = _get_rgb(buffer)
-      return np.flipud(rgb)
-    raise Exception("No rgb image")
+    if self.cached:
+      return self.cache
+    shape = self.image_length, self.image_width
+    buffer = np.zeros(shape, dtype=np.uint32)
+    ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
+    rgb = _get_rgb(buffer)
+    self.cache = np.flipud(rgb)
+    self.cached = True
+    return self.cache
 
   def load_tiled(self, y_range, x_range):
     cdef unsigned int z_size, start_x, start_y, start_x_offset, start_y_offset

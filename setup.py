@@ -6,13 +6,13 @@ import numpy
 
 setup(
     ext_modules = cythonize([
-        Extension("pytiff", ["pytiff.pyx"],
+        Extension("pytiff", ["pytiff/pytiff.pyx"],
         libraries=["tiff"],
-        include_dirs=[".", numpy.get_include()],
+        include_dirs=["./pytiff", numpy.get_include()],
         language="c++",
         )
     ]),
     cmdclass = {"build_ext": build_ext},
     name="pytiff",
-    version="0.2.2"
+    version="0.3"
 )
