@@ -22,6 +22,7 @@ cdef extern from "tiffio.h":
   TIFF* TIFFOpen(const char*, const char*)
   void TIFFClose(TIFF*)
   tsize_t TIFFReadTile(TIFF* tif, tdata_t buf, unsigned int x, unsigned int y, unsigned int z, tsample_t sample)
+  int TIFFReadScanline(TIFF* tif, tdata_t buf, unsigned int row, tsample_t sample)
   ttile_t TIFFNumberOfTiles(TIFF* tif)
   tstrip_t TIFFNumberOfStrips(TIFF* tif)
   # directory functions

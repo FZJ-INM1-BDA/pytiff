@@ -222,13 +222,16 @@ cdef class Tiff:
   @property
   def n_samples(self):
     cdef short samples_in_file = self.samples_per_pixel - self.extra_samples
-    cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, samples_in_file),dtype=self.dtype).squeeze()
-    cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, 0, 0, 0, 0)
-    #if bytes == -1 or not self.tile_width:
-    #  return 4
-    #else:
-    #  return samples_in_file
     return samples_in_file
+
+  def is_tiled(self):
+    """Return True if image is tiled, else False."""
+    cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.samples_per_pixel - self.extra_samples),dtype=self.dtype).squeeze()
+    cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, 0, 0, 0, 0)
+    if bytes == -1 or not self.tile_width:
+      return False
+    return True
+
   def __enter__(self):
     return self
 
@@ -236,17 +239,43 @@ cdef class Tiff:
     self.close()
 
   def load_all(self):
-    """Loads an image at once. Returns an RGBA image."""
-    cdef np.ndarray buffer
+    """Load the image at once.
+
+    If n_samples > 1 a rgba image is returned, else a greyscale image is assumed.
+
+    Returns:
+      array_like: RGBA image (3 dimensions) or Greyscale (2 dimensions)
+    """
     if self.cached:
       return self.cache
-    shape = self.image_length, self.image_width
+    if self.n_samples > 1:
+      data = self._load_all_rgba()
+    else:
+      data = self._load_all_grey()
+
+    self.cache = data
+    self.cached = True
+    return data
+
+  def _load_all_rgba(self):
+    """Loads an image at once. Returns an RGBA image."""
+    cdef np.ndarray buffer
+    shape = self.size
     buffer = np.zeros(shape, dtype=np.uint32)
     ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
     rgb = _get_rgb(buffer)
-    self.cache = np.flipud(rgb)
-    self.cached = True
-    return self.cache
+    rgb = np.flipud(rgb)
+    return rgb
+
+  def _load_all_grey(self):
+    """Loads an image at once. Returns a greyscale image."""
+    cdef np.ndarray total = np.zeros(self.size, dtype=self.dtype)
+    cdef np.ndarray buffer = np.zeros(self.image_width, dtype=self.dtype)
+
+    for i in range(self.image_length):
+      ctiff.TIFFReadScanline(self.tiff_handle,<void*> buffer.data, i, 0)
+      total[i] = buffer
+    return total
 
   def load_tiled(self, y_range, x_range):
     cdef unsigned int z_size, start_x, start_y, start_x_offset, start_y_offset
