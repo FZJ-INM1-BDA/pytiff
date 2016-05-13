@@ -4,9 +4,11 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 import numpy
 
+import pytiff
+VERSION = pytiff.__version__
 setup(
     ext_modules = cythonize([
-        Extension("pytiff", ["pytiff/pytiff.pyx"],
+        Extension("pytiff._pytiff", ["pytiff/_pytiff.pyx"],
         libraries=["tiff"],
         include_dirs=["./pytiff", numpy.get_include()],
         language="c++",
@@ -14,5 +16,5 @@ setup(
     ]),
     cmdclass = {"build_ext": build_ext},
     name="pytiff",
-    version="0.3"
+    version=VERSION
 )
