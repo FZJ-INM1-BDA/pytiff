@@ -172,9 +172,6 @@ ENV/
 # Rope project settings
 .ropeproject
 
-# data
-*.tif
-
 # auto generated code
 *.cpp
 *.c
