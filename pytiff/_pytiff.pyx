@@ -10,6 +10,7 @@ from cpython cimport bool
 cimport numpy as np
 import numpy as np
 from math import ceil
+import re
 
 TYPE_MAP = {
   1: {
@@ -40,6 +41,16 @@ cdef unsigned int IMAGELENGTH = 257
 cdef unsigned int TILEWIDTH = 322
 cdef unsigned int TILELENGTH = 323
 cdef unsigned int EXTRA_SAMPLES = 338
+
+def tiff_version_raw():
+  """Return the raw version string of libtiff."""
+  return ctiff.TIFFGetVersion()
+
+def tiff_version():
+  """Parse the version of libtiff and return it."""
+  cdef string str_version = tiff_version_raw()
+  m = re.search("(?<=[Vv]ersion )\d+\.\d+\.?\d*", str_version)
+  return m.group(0)
 
 class NotTiledError(Exception):
   def __init__(self, message):

@@ -18,6 +18,7 @@ cdef extern from "tiffio.h":
   ctypedef unsigned int tstrip_t
   # functions
   # general functions
+  string TIFFGetVersion()
   int TIFFGetField(TIFF*, ttag_t, ...)
   TIFF* TIFFOpen(const char*, const char*)
   void TIFFClose(TIFF*)
