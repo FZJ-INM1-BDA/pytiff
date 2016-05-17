@@ -4,8 +4,8 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 import numpy
 
-import pytiff
-VERSION = pytiff.__version__
+import _version
+
 setup(
     ext_modules = cythonize([
         Extension("pytiff._pytiff", ["pytiff/_pytiff.pyx"],
@@ -16,5 +16,11 @@ setup(
     ]),
     cmdclass = {"build_ext": build_ext},
     name="pytiff",
-    version=VERSION
+    version=_version.__version__,
+    packages=["pytiff", "pytiff._version"],
+    package_dir={
+        "pytiff" : "pytiff",
+        "pytiff._version" : "_version"
+    },
+    license="MIT"
 )
