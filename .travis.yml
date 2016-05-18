@@ -5,4 +5,8 @@ python:
 install:
   - pip install cython numpy
   - pip install -e .
-script: nosetests
+script: py.test test
+branches:
+  - only:
+    - master
+    - develop
