@@ -1,3 +1,4 @@
+#cython: c_string_type=str, c_string_encoding=ascii
 """
 pytiff is a python wrapper for the libtiff c api written in cython. It is python 2 and 3 compatible.
 While there are some missing features, it supports reading chunks of tiled greyscale tif images as well as basic reading for color images.
