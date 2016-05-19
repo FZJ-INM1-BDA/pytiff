@@ -7,6 +7,6 @@ install:
   - pip install -e .
 script: py.test test
 branches:
-  - only:
+  only:
     - master
     - develop
