@@ -21,5 +21,5 @@ setup(
     package_dir={
         "pytiff" : "pytiff",
     },
-    license="MIT"
+    license="BSD"
 )
