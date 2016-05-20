@@ -7,6 +7,8 @@ TILED_GREY = "test_data/small_example_tiled.tif"
 NOT_TILED_GREY = "test_data/small_example.tif"
 TILED_RGB = "test_data/tiled_rgb_sample.tif"
 NOT_TILED_RGB = "test_data/rgb_sample.tif"
+TILED_BIG = "test_data/bigtif_example_tiled.tif"
+NOT_TILED_BIG = "test_data/bigtif_example.tif"
 NO_FILE = "test_data/not_here.tif"
 
 def test_open():
@@ -18,9 +20,13 @@ def test_open_fail():
         tif = pytiff.Tiff(NO_FILE)
 
 def test_greyscale_tiled():
+    with pytiff.Tiff(TILED_GREY) as tif:
+        assert tif.is_tiled()
     read_methods(TILED_GREY)
 
 def test_greyscale_not_tiled():
+    with pytiff.Tiff(NOT_TILED_GREY) as tif:
+        assert not tif.is_tiled()
     read_methods(NOT_TILED_GREY)
 
 def test_rgb_tiled():
@@ -30,6 +36,7 @@ def test_rgb_tiled():
             break
 
     with pytiff.Tiff(TILED_RGB) as tif:
+        assert tif.is_tiled()
         data = tif[:]
         # test reading whole page
         np.testing.assert_array_equal(first_page, data)
@@ -52,6 +59,7 @@ def test_rgb_not_tiled():
         first_page = np.dstack((first_page, alpha))
 
     with pytiff.Tiff(NOT_TILED_RGB) as tif:
+        assert not tif.is_tiled()
         data = tif[:]
         # test reading whole page
         np.testing.assert_array_equal(first_page, data)
@@ -64,6 +72,36 @@ def test_rgb_not_tiled():
 
         chunk = tif[100:200, 250:350]
         np.testing.assert_array_equal(first_page[100:200, 250:350], chunk)
+
+def test_big_tiled():
+    with pytiff.Tiff(TILED_BIG) as tif:
+        assert tif.is_tiled()
+    read_methods(TILED_BIG)
+
+def test_big_not_tiled():
+    with pytiff.Tiff(NOT_TILED_BIG) as tif:
+        assert not tif.is_tiled()
+    read_methods(NOT_TILED_BIG)
+
+MULTI_PAGE = "test_data/multi_page.tif"
+N_PAGES = 4
+SIZE = [(500, 500), (500, 500), (400, 640),(500, 500)]
+MODE = ["greyscale", "greyscale", "rgb","greyscale"]
+TYPE = [np.uint8, np.uint8, np.uint8, np.uint16]
+
+def test_multi_page():
+    with pytiff.Tiff(MULTI_PAGE) as tif:
+        assert tif.number_of_pages == N_PAGES
+        assert tif.current_page == 0
+        tif.set_page(2)
+        assert tif.current_page == 2
+        tif.set_page(N_PAGES + 1)
+        assert tif.current_page == 3
+        for i in range(N_PAGES):
+            tif.set_page(i)
+            assert tif.size == SIZE[i]
+            assert tif.mode == MODE[i]
+            assert tif.dtype == TYPE[i]
 
 def read_methods(filename):
     with tifffile.TiffFile(filename) as tif:
