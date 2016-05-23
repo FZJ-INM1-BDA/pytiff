@@ -1,12 +1,13 @@
 language: python
 os:
   - linux
+dist: trusty
 python:
   - "2.7"
   - "3.5"
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y libtiff5
+  - sudo apt-get install -y libtiff5 libtiff5-dev
 install:
   - pip install cython numpy tifffile
   - pip install -e .
