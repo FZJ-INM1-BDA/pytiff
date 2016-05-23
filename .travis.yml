@@ -6,7 +6,7 @@ python:
   - "3.5"
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y libtiff
+  - sudo apt-get install -y libtiff5 libtiff5-dev
 install:
   - pip install cython numpy tifffile
   - pip install -e .
