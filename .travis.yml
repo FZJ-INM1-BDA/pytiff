@@ -1,12 +1,19 @@
 language: python
+os:
+  - linux
+dist: trusty
 python:
   - "2.7"
   - "3.5"
-install:
-  - pip install cython numpy tifffile
-  - pip install -e .
-script: py.test test
 branches:
   only:
     - master
     - develop
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libtiff5 libtiff5-dev
+install:
+  - pip install cython numpy tifffile coveralls pytest-cov
+  - pip install -e .
+script: py.test --cov=pytiff test
+after_success: coveralls
