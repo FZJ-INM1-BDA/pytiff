@@ -4,8 +4,8 @@ pytiff is a lightweight library for reading chunks from a tiff file. While it su
 
 The libtiff library is wrapped using the Cython package.
 
-* develop: [![Build Status](https://travis-ci.org/FZJ-INM1-BDA/pytiff.svg?branch=develop)](https://travis-ci.org/FZJ-INM1-BDA/pytiff)
-* master: [![Build Status](https://travis-ci.org/FZJ-INM1-BDA/pytiff.svg?branch=master)](https://travis-ci.org/FZJ-INM1-BDA/pytiff)
+* develop: [![Build Status](https://travis-ci.org/FZJ-INM1-BDA/pytiff.svg?branch=develop)](https://travis-ci.org/FZJ-INM1-BDA/pytiff) [![CoverageStatus](https://coveralls.io/repos/github/FZJ-INM1-BDA/pytiff/badge.svg?branch=develop)](https://coveralls.io/github/FZJ-INM1-BDA/pytiff?branch=develop)
+* master: [![Build Status](https://travis-ci.org/FZJ-INM1-BDA/pytiff.svg?branch=master)](https://travis-ci.org/FZJ-INM1-BDA/pytiff) [![CoverageStatus](https://coveralls.io/repos/github/FZJ-INM1-BDA/pytiff/badge.svg?branch=master)](https://coveralls.io/github/FZJ-INM1-BDA/pytiff?branch=master)
 
 
 ## Dependencies
