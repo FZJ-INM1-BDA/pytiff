@@ -1,4 +1,4 @@
-import pytiff
+from pytiff import *
 import pytest
 import tifffile
 import numpy as np
@@ -12,20 +12,20 @@ NOT_TILED_BIG = "test_data/bigtif_example.tif"
 NO_FILE = "test_data/not_here.tif"
 
 def test_open():
-    tif = pytiff.Tiff(TILED_GREY)
+    tif = Tiff(TILED_GREY)
     assert True
 
 def test_open_fail():
     with pytest.raises(IOError):
-        tif = pytiff.Tiff(NO_FILE)
+        tif = Tiff(NO_FILE)
 
 def test_greyscale_tiled():
-    with pytiff.Tiff(TILED_GREY) as tif:
+    with Tiff(TILED_GREY) as tif:
         assert tif.is_tiled()
     read_methods(TILED_GREY)
 
 def test_greyscale_not_tiled():
-    with pytiff.Tiff(NOT_TILED_GREY) as tif:
+    with Tiff(NOT_TILED_GREY) as tif:
         assert not tif.is_tiled()
     read_methods(NOT_TILED_GREY)
 
@@ -35,7 +35,7 @@ def test_rgb_tiled():
             first_page = page.asarray()
             break
 
-    with pytiff.Tiff(TILED_RGB) as tif:
+    with Tiff(TILED_RGB) as tif:
         assert tif.is_tiled()
         data = tif[:]
         # test reading whole page
@@ -58,7 +58,7 @@ def test_rgb_not_tiled():
         alpha = np.ones_like(first_page[:,:,0]) * 255
         first_page = np.dstack((first_page, alpha))
 
-    with pytiff.Tiff(NOT_TILED_RGB) as tif:
+    with Tiff(NOT_TILED_RGB) as tif:
         assert not tif.is_tiled()
         data = tif[:]
         # test reading whole page
@@ -74,12 +74,12 @@ def test_rgb_not_tiled():
         np.testing.assert_array_equal(first_page[100:200, 250:350], chunk)
 
 def test_big_tiled():
-    with pytiff.Tiff(TILED_BIG) as tif:
+    with Tiff(TILED_BIG) as tif:
         assert tif.is_tiled()
     read_methods(TILED_BIG)
 
 def test_big_not_tiled():
-    with pytiff.Tiff(NOT_TILED_BIG) as tif:
+    with Tiff(NOT_TILED_BIG) as tif:
         assert not tif.is_tiled()
     read_methods(NOT_TILED_BIG)
 
@@ -90,7 +90,7 @@ MODE = ["greyscale", "greyscale", "rgb","greyscale"]
 TYPE = [np.uint8, np.uint8, np.uint8, np.uint16]
 
 def test_multi_page():
-    with pytiff.Tiff(MULTI_PAGE) as tif:
+    with Tiff(MULTI_PAGE) as tif:
         assert tif.number_of_pages == N_PAGES
         assert tif.current_page == 0
         tif.set_page(2)
@@ -109,7 +109,7 @@ def read_methods(filename):
             first_page = page.asarray()
             break
 
-    with pytiff.Tiff(filename) as tif:
+    with Tiff(filename) as tif:
         data = tif[:]
         # test reading whole page
         np.testing.assert_array_equal(first_page, data)
