@@ -13,7 +13,7 @@ before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y libtiff5 libtiff5-dev
 install:
-  - pip install cython numpy tifffile coveralls pytest-cov
+  - pip install cython>=0.24 numpy tifffile coveralls pytest-cov
   - python setup.py build_ext --inplace --cov
 script: py.test --cov pytiff
 after_success: coveralls
