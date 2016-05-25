@@ -1,3 +1,4 @@
+sudo: false
 language: python
 os:
   - linux
@@ -9,9 +10,6 @@ branches:
   only:
     - master
     - develop
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libtiff5 libtiff5-dev
 install:
   - pip install --upgrade pip
   - pip install --upgrade pytest
