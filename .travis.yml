@@ -19,5 +19,6 @@ install:
   - pip install numpy
   - pip install tifffile coveralls pytest-cov
   - python setup.py build_ext --inplace --cov
+  - pwd
 script: py.test --cov pytiff
 after_success: coveralls
