@@ -10,8 +10,11 @@ directives = {}
 macros = []
 
 if "--cov" in sys.argv:
+    print("Compiling with Coverage on")
     directives = {"linetrace": True}
     macros = [("CYTHON_TRACE", "1")]
+    print(directives)
+    print(macros)
     sys.argv.remove("--cov")
 
 
