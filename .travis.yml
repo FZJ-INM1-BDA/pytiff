@@ -11,7 +11,12 @@ branches:
     - develop
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y libtiff5 libtiff5-dev gcc-6
+  - sudo apt-get install software-properties-common
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+  - sudo apt-get -qq update
+  - sudo apt-get install gcc-6 g++-6
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 60 --slave /usr/bin/g++ g++ /usr/bin/g++-6
+  - sudo apt-get install -y libtiff5 libtiff5-dev
   - gcc --version
 install:
   - pip install --upgrade pip
