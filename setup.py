@@ -7,7 +7,6 @@ import sys
 import os
 import pytiff._version as _version
 
-os.environ["CC"] = "g++"
 directives = {}
 macros = []
 

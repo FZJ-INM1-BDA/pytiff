@@ -11,7 +11,8 @@ branches:
     - develop
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y libtiff5 libtiff5-dev
+  - sudo apt-get install -y libtiff5 libtiff5-dev build-essential
+  - gcc --version
 install:
   - pip install --upgrade pip
   - pip install --upgrade pytest
