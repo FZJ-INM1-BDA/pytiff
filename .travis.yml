@@ -11,8 +11,19 @@ branches:
     - develop
 before_install:
   - sudo apt-get -qq update
+  - sudo apt-get install -y software-properties-common
+  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+  - sudo apt-get -qq update
+  - sudo apt-get install -y gcc-6 g++-6
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 60 --slave /usr/bin/g++ g++ /usr/bin/g++-6
   - sudo apt-get install -y libtiff5 libtiff5-dev
+  - gcc --version
 install:
-  - pip install cython numpy tifffile
-  - pip install -e .
-script: py.test test
+  - pip install --upgrade pip
+  - pip install --upgrade pytest
+  - pip install cython
+  - pip install numpy
+  - pip install tifffile coveralls pytest-cov
+  - python setup.py build_ext --inplace --cov
+script: py.test --cov=pytiff .
+after_success: coveralls
