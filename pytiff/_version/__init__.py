@@ -9,12 +9,14 @@ __all__ = [
     'VERSION_PATCH',
     'VERSION_STRING',
     '__version__',
+    '_package'
 ]
 
 VERSION_MAJOR = 0
 VERSION_MINOR = 3
-VERSION_PATCH = 5
+VERSION_PATCH = 6
 
 VERSION_STRING = "{major}.{minor}.{patch}".format(major=VERSION_MAJOR, minor=VERSION_MINOR, patch=VERSION_PATCH)
 
 __version__ = VERSION_STRING
+_package = __name__.split(".")[0]

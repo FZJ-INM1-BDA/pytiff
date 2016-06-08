@@ -7,11 +7,13 @@ Apart from that multipage tiffs are supported.
 
 cimport ctiff
 from libcpp.string cimport string
+import logging
 from cpython cimport bool
 cimport numpy as np
 import numpy as np
 from math import ceil
 import re
+from pytiff._version import _package
 
 TYPE_MAP = {
   1: {
@@ -94,19 +96,25 @@ cdef class Tiff:
   cdef short sample_format, n_pages, extra_samples
   cdef bool closed, cached
   cdef unsigned int image_width, image_length, tile_width, tile_length
-  cdef object cache
+  cdef object cache, logger
+  cdef string filename
 
   def __cinit__(self, const string filename):
     self.closed = True
+    self.filename = filename
     self.n_pages = 0
     self.tiff_handle = ctiff.TIFFOpen(filename.c_str(), "r")
     if self.tiff_handle is NULL:
       raise IOError("file not found!")
     self.closed = False
+
+    self.logger = logging.getLogger(_package)
+    self.logger.debug("Tiff object created. file: {}".format(filename))
     self._init_page()
 
   def _init_page(self):
     """Initialize page specific attributes."""
+    self.logger.debug("_init_page called.")
     self.samples_per_pixel = 1
     ctiff.TIFFGetField(self.tiff_handle, SAMPLES_PER_PIXEL, &self.samples_per_pixel)
     cdef np.ndarray[np.int16_t, ndim=1] bits_buffer = np.zeros(self.samples_per_pixel, dtype=np.int16)
@@ -135,12 +143,14 @@ cdef class Tiff:
   def close(self):
     """Close the filehandle."""
     if not self.closed:
+      self.logger.debug("Closing file manually. file: {}".format(self.filename))
       ctiff.TIFFClose(self.tiff_handle)
       self.closed = True
       return
 
   def __dealloc__(self):
     if not self.closed:
+      self.logger.debug("Closing file automatically. file: {}".format(self.filename))
       ctiff.TIFFClose(self.tiff_handle)
 
   @property
@@ -189,6 +199,7 @@ cdef class Tiff:
       Since greyscale images only have one sample per pixel, this resembles the general dtype.
     """
     if self.mode == "rgb":
+      self.logger.debug("RGB Image assumed for dtype.")
       return np.uint8
     return TYPE_MAP[self.sample_format][self.n_bits[0]]
 
@@ -271,6 +282,7 @@ cdef class Tiff:
 
   def _load_all_rgba(self):
     """Loads an image at once. Returns an RGBA image."""
+    self.logger.debug("Loading a whole rgba image.")
     cdef np.ndarray buffer
     shape = self.size
     buffer = np.zeros(shape, dtype=np.uint32)
@@ -281,6 +293,7 @@ cdef class Tiff:
 
   def _load_all_grey(self):
     """Loads an image at once. Returns a greyscale image."""
+    self.logger.debug("Loading a whole greyscale image.")
     cdef np.ndarray total = np.zeros(self.size, dtype=self.dtype)
     cdef np.ndarray buffer = np.zeros(self.image_width, dtype=self.dtype)
 
@@ -290,6 +303,7 @@ cdef class Tiff:
     return total
 
   def load_tiled(self, y_range, x_range):
+    self.logger.debug("Loading tiled image. RGBA is assumed as RGBA,RGBA... for each pixel.")
     cdef unsigned int z_size, start_x, start_y, start_x_offset, start_y_offset
     cdef unsigned int end_x, end_y, end_x_offset, end_y_offset
     if not self.tile_width:
@@ -351,8 +365,8 @@ cdef class Tiff:
     try:
       res = self.load_tiled(y_range, x_range)
     except NotTiledError as e:
-      print(e.message)
-      print("Warning: chunks not available! Loading all data!")
+      self.logger.debug(e.message)
+      self.logger.debug("Warning: chunks not available! Loading all data!")
       tmp = self.load_all()
       res = tmp[y_range[0]:y_range[1], x_range[0]:x_range[1]]
 
