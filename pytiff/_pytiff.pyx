@@ -180,6 +180,11 @@ cdef class Tiff:
     return self.image_length, self.image_width
 
   @property
+  def shape(self):
+    """The shape property is an alias for the size property."""
+    return self.size
+
+  @property
   def n_bits(self):
     """Returns an array with the bit size for each sample of a pixel."""
     return np.array(self.n_bits_view)
