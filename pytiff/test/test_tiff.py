@@ -83,6 +83,13 @@ def test_big_not_tiled():
         assert not tif.is_tiled()
     read_methods(NOT_TILED_BIG)
 
+def test_to_array():
+    import numpy as np
+    with Tiff(TILED_GREY) as tif:
+        data = np.array(tif)
+    with Tiff(TILED_GREY) as t:
+        assert np.all(data == t[:])
+
 MULTI_PAGE = "test_data/multi_page.tif"
 N_PAGES = 4
 SIZE = [(500, 500), (500, 500), (400, 640),(500, 500)]
