@@ -403,6 +403,9 @@ cdef class Tiff:
 
     return self.get(y_range, x_range)
 
+  def __array__(self, dtype=None):
+    return self.__getitem__(slice(None))
+
   cdef _read_tile(self, unsigned int y, unsigned int x):
     cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.n_samples),dtype=self.dtype).squeeze()
     cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, x, y, 0, 0)
