@@ -18,9 +18,10 @@ The libtiff library is wrapped using the Cython package.
 To install pytiff, clone the repo and call setup.py.
 
 ```bash
-git clone git@github.com:FZJ-INM1-BDA/pytiff.git
+git clone https://github.com/FZJ-INM1-BDA/pytiff.git
 cd pytiff
 python setup.py install
+# or pip install .
 ```
 
 ## Usage
