@@ -36,6 +36,21 @@ TYPE_MAP = {
   }
 }
 
+# map data type to (sample_format, bitspersample)
+INVERSE_TYPE_MAP = {
+  np.dtype('uint8'): (1, 8),
+  np.dtype('uint16'): (1, 16),
+  np.dtype('uint32'): (1, 32),
+  np.dtype('uint64'): (1, 64),
+  np.dtype('int8'): (2, 8),
+  np.dtype('int16'): (2, 16),
+  np.dtype('int32'): (2, 32),
+  np.dtype('int64'): (2, 64),
+  np.dtype('float16'): (3, 16),
+  np.dtype('float32'): (3, 32),
+  np.dtype('float64'): (3, 64)
+}
+
 cdef unsigned int SAMPLE_FORMAT = 339
 cdef unsigned int SAMPLES_PER_PIXEL = 277
 cdef unsigned int BITSPERSAMPLE = 258
@@ -44,6 +59,14 @@ cdef unsigned int IMAGELENGTH = 257
 cdef unsigned int TILEWIDTH = 322
 cdef unsigned int TILELENGTH = 323
 cdef unsigned int EXTRA_SAMPLES = 338
+cdef unsigned int TILE_LENGTH = 323
+cdef unsigned int TILE_WIDTH =322
+cdef unsigned int COMPRESSION = 259
+cdef unsigned int PHOTOMETRIC = 262
+cdef unsigned int PLANARCONFIG = 284
+cdef unsigned int MIN_IS_BLACK = 1
+cdef unsigned int MIN_IS_WHITE = 0
+cdef unsigned int NO_COMPRESSION = 1
 
 def tiff_version_raw():
   """Return the raw version string of libtiff."""
@@ -93,24 +116,33 @@ cdef class Tiff:
   cdef ctiff.TIFF* tiff_handle
   cdef public short samples_per_pixel
   cdef short[:] n_bits_view
-  cdef short sample_format, n_pages, extra_samples
+  cdef short sample_format, n_pages, extra_samples, _write_mode_n_pages
   cdef bool closed, cached
   cdef unsigned int image_width, image_length, tile_width, tile_length
   cdef object cache, logger
-  cdef string filename
+  cdef str filename
+  cdef str file_mode
 
-  def __cinit__(self, const string filename):
+  def __cinit__(self, str filename, str file_mode="r", bool bigtiff=False):
+    if bigtiff:
+      file_mode += "8"
+    tmp_filename = <string> filename
+    tmp_mode = <string> file_mode
     self.closed = True
     self.filename = filename
+    self.file_mode = file_mode
+    self._write_mode_n_pages = 0
     self.n_pages = 0
-    self.tiff_handle = ctiff.TIFFOpen(filename.c_str(), "r")
+    self.tiff_handle = ctiff.TIFFOpen(tmp_filename.c_str(), tmp_mode.c_str())
     if self.tiff_handle is NULL:
       raise IOError("file not found!")
     self.closed = False
 
     self.logger = logging.getLogger(_package)
     self.logger.debug("Tiff object created. file: {}".format(filename))
-    self._init_page()
+    cdef np.ndarray[np.int16_t, ndim=1] write_pages_buffer = np.zeros(2, dtype=np.int16)
+    if self.file_mode == "r":
+      self._init_page()
 
   def _init_page(self):
     """Initialize page specific attributes."""
@@ -236,6 +268,12 @@ cdef class Tiff:
     # dont use
     # fails if only one directory
     # ctiff.TIFFNumberOfDirectories(self.tiff_handle)
+    if self.file_mode == "r":
+      return self._number_of_pages_readmode()
+    else:
+      return self._number_of_pages_writemode()
+
+  def _number_of_pages_readmode(self):
     current_dir = self.current_page
     if self.n_pages != 0:
       return self.n_pages
@@ -246,6 +284,9 @@ cdef class Tiff:
         cont = ctiff.TIFFReadDirectory(self.tiff_handle)
       ctiff.TIFFSetDirectory(self.tiff_handle, current_dir)
     return self.n_pages
+
+  def _number_of_pages_writemode(self):
+    return self._write_mode_n_pages
 
   @property
   def n_samples(self):
@@ -405,6 +446,94 @@ cdef class Tiff:
 
   def __array__(self, dtype=None):
     return self.__getitem__(slice(None))
+
+  def write(self, np.ndarray data, **options):
+    """Write data to the tif file.
+
+    If the file is opened in write mode, a numpy array can be written to a
+    tiff page. Currently RGB images are not supported.
+    Multipage tiffs are supperted by calling write multiple times.
+
+    Args:
+        data (array_like): 2D numpy array. Supported dtypes: un(signed) integer, float.
+        method: determines which method is used for writing. Either "tile" for tiled tiffs or "scanline" for basic scanline tiffs.
+        photometric: determines how values are interpreted, either zero == black or zero == white.
+                     MIN_IS_BLACK(default), MIN_IS_WHITE. more information can be found in the libtiff doc.
+        planar_config: defaults to 1, component values for each pixel are stored contiguously.
+                      2 says components are stored in component planes. Irrelevant for greyscale images.
+        compression: compression level. defaults to no compression. More information can be found in the libtiff doc.
+        tile_length: Only needed if method is "tile", sets the length of a tile. Must be a multiple of 16. Default: 256
+        tile_width: Only needed if method is "tile", sets the width of a tile. Must be a multiple of 16. Default: 256
+
+    Examples:
+      >>> data = np.random.rand(100,100)
+      >>> # data = np.random.randint(size=(100,100))
+      >>> with pytiff.Tiff("example.tif", "w") as handle:
+      >>>   handle.write(data, method="tile", tile_length=240, tile_width=240)
+    """
+    if data.ndim > 2:
+      raise NotImplementedError("Only grayscale image implemented.")
+    if "w" not in self.file_mode:
+      raise Exception("Write is only supported in .. write mode ..")
+
+    cdef short photometric, planar_config, compression
+    cdef short sample_format, nbits
+    rows_per_strip = options.get("rows_per_strip", 100)
+    photometric = options.get("photometric", MIN_IS_BLACK)
+    planar_config = options.get("planar_config", 1)
+    compression = options.get("compression", NO_COMPRESSION)
+
+    sample_format, nbits = INVERSE_TYPE_MAP[data.dtype]
+
+    ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
+    ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
+    ctiff.TIFFSetField(self.tiff_handle, IMAGELENGTH, data.shape[0])
+    ctiff.TIFFSetField(self.tiff_handle, IMAGEWIDTH, data.shape[1])
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLE_FORMAT, sample_format)
+    ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
+    ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
+    ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
+
+    write_method = options.get("method", "tile")
+    if write_method == "tile":
+      self._write_tiles(data, **options)
+    elif write_method == "scanline":
+      self._write_scanline(data, **options)
+
+    self._write_mode_n_pages += 1
+
+  def _write_tiles(self, np.ndarray data, **options):
+    cdef short tile_length, tile_width
+    tile_length = options.get("tile_length", 240)
+    tile_width = options.get("tile_width", 240)
+
+    ctiff.TIFFSetField(self.tiff_handle, TILE_LENGTH, tile_length)
+    ctiff.TIFFSetField(self.tiff_handle, TILE_WIDTH, tile_width)
+
+    cdef np.ndarray buffer
+    n_tile_rows = int(np.ceil(data.shape[0] / float(tile_length)))
+    n_tile_cols = int(np.ceil(data.shape[1] / float(tile_width)))
+
+    cdef unsigned int x, y
+    for i in range(n_tile_rows):
+      for j in range(n_tile_cols):
+        y = i * tile_length
+        x = j * tile_width
+        buffer = data[y:(i+1)*tile_length, x:(j+1)*tile_width]
+        buffer = np.pad(buffer, ((0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])), "constant", constant_values=(0))
+
+        ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x, y, 0, 0)
+
+    ctiff.TIFFWriteDirectory(self.tiff_handle)
+
+  def _write_scanline(self, np.ndarray data, **options):
+      ctiff.TIFFSetField(self.tiff_handle, 278, ctiff.TIFFDefaultStripSize(self.tiff_handle, data.shape[1])) # rows per strip, use tiff function for estimate
+      cdef np.ndarray row
+      for i in range(data.shape[0]):
+        row = data[i]
+        ctiff.TIFFWriteScanline(self.tiff_handle, <void *>row.data, i, 0)
+      ctiff.TIFFWriteDirectory(self.tiff_handle)
 
   cdef _read_tile(self, unsigned int y, unsigned int x):
     cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.n_samples),dtype=self.dtype).squeeze()
