@@ -136,7 +136,7 @@ def read_methods(filename):
         np.testing.assert_array_equal(first_page[100:200, 250:350], chunk)
 
 OUT_FILE = "test_data/tmp.tif"
-MAX_SAMPLES = 10
+MAX_SAMPLES = 5
 MAX_ITER = 10
 
 def random_matrix(dtype, min_row=0, max_row=5, min_col=0, max_col=5, elements=None):
@@ -146,7 +146,7 @@ def random_matrix(dtype, min_row=0, max_row=5, min_col=0, max_col=5, elements=No
 # scanline integer tests
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.int8, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.int8, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_int8_scanline(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="scanline")
@@ -159,7 +159,7 @@ def test_write_int8_scanline(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.int16, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.int16, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_int16_scanline(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="scanline")
@@ -172,7 +172,7 @@ def test_write_int16_scanline(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.int32, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.int32, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_int32_scanline(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="scanline")
@@ -185,7 +185,7 @@ def test_write_int32_scanline(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.int64, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.int64, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_int64_scanline(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="scanline")
@@ -200,7 +200,7 @@ def test_write_int64_scanline(data):
 # tile integer tests
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.int8, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.int8, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_int8_tile(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="tile", tile_width=16, tile_length=16)
@@ -213,7 +213,7 @@ def test_write_int8_tile(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.int16, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.int16, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_int16_tile(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="tile", tile_width=16, tile_length=16)
@@ -226,7 +226,7 @@ def test_write_int16_tile(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.int32, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.int32, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_int32_tile(data):
     print(data.shape)
     with Tiff(OUT_FILE, "w") as handle:
@@ -240,7 +240,7 @@ def test_write_int32_tile(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.int64, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.int64, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_int64_tile(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="tile", tile_width=16, tile_length=16)
@@ -255,7 +255,7 @@ def test_write_int64_tile(data):
 # unsigned int tests
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.uint8, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.uint8, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_uint8_scanline(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="scanline")
@@ -268,7 +268,7 @@ def test_write_uint8_scanline(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.uint16, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.uint16, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_uint16_tile(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="tile", tile_width=16, tile_length=16)
@@ -281,7 +281,7 @@ def test_write_uint16_tile(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.uint32, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.uint32, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_uint32_scanline(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="scanline")
@@ -294,7 +294,7 @@ def test_write_uint32_scanline(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.uint64, min_row=100, max_row=300, min_col=100, max_col=300))
+@given(data=random_matrix(np.uint64, min_row=100, max_row=200, min_col=100, max_col=200))
 def test_write_uint64_tile(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="tile", tile_width=16, tile_length=16)
@@ -309,7 +309,7 @@ def test_write_uint64_tile(data):
 # float tests
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.float16, min_row=100, max_row=300, min_col=100, max_col=300, elements=st.floats(min_value=0, max_value=1)))
+@given(data=random_matrix(np.float16, min_row=100, max_row=200, min_col=100, max_col=200, elements=st.floats(min_value=0, max_value=1)))
 def test_write_float16_tile(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="tile", tile_width=16, tile_length=16)
@@ -322,7 +322,7 @@ def test_write_float16_tile(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.float32, min_row=100, max_row=300, min_col=100, max_col=300, elements=st.floats(min_value=0, max_value=1)))
+@given(data=random_matrix(np.float32, min_row=100, max_row=200, min_col=100, max_col=200, elements=st.floats(min_value=0, max_value=1)))
 def test_write_float32_scanline(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="scanline")
@@ -335,7 +335,7 @@ def test_write_float32_scanline(data):
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
-@given(data=random_matrix(np.float64, min_row=100, max_row=300, min_col=100, max_col=300, elements=st.floats(min_value=0, max_value=1)))
+@given(data=random_matrix(np.float64, min_row=100, max_row=200, min_col=100, max_col=200, elements=st.floats(min_value=0, max_value=1)))
 def test_write_float64_tile(data):
     with Tiff(OUT_FILE, "w") as handle:
         handle.write(data, method="tile", tile_width=16, tile_length=16)
