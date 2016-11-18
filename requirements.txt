@@ -1,0 +1,6 @@
+Cython==0.25.1
+numpy==1.11.2
+setuptools==18.2
+hypothesis==3.6.0
+pytest==3.0.4
+tifffile==0.9.2
