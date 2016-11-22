@@ -1,10 +1,6 @@
 pytiff package
 ==============
 
-.. toctree::
-
-    pytiff
-
 Module contents
 ---------------
 
