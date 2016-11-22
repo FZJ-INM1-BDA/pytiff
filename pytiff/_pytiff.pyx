@@ -307,7 +307,7 @@ cdef class Tiff:
   def __exit__(self, type, value, traceback):
     self.close()
 
-  def load_all(self):
+  def _load_all(self):
     """Load the image at once.
 
     If n_samples > 1 a rgba image is returned, else a greyscale image is assumed.
@@ -348,7 +348,7 @@ cdef class Tiff:
       total[i] = buffer
     return total
 
-  def load_tiled(self, y_range, x_range):
+  def _load_tiled(self, y_range, x_range):
     self.logger.debug("Loading tiled image. RGBA is assumed as RGBA,RGBA... for each pixel.")
     cdef unsigned int z_size, start_x, start_y, start_x_offset, start_y_offset
     cdef unsigned int end_x, end_y, end_x_offset, end_y_offset
@@ -391,7 +391,7 @@ cdef class Tiff:
     arr_buf = large_buf[y_range[0]-offset_y:y_range[1]-offset_y, x_range[0]-offset_x:x_range[1]-offset_x]
     return arr_buf
 
-  def get(self, y_range=None, x_range=None):
+  def _get(self, y_range=None, x_range=None):
     """Function to load a chunk of an image.
 
     Should not be used. Instead use numpy style slicing.
@@ -409,11 +409,11 @@ cdef class Tiff:
 
     cdef np.ndarray res, tmp
     try:
-      res = self.load_tiled(y_range, x_range)
+      res = self._load_tiled(y_range, x_range)
     except NotTiledError as e:
       self.logger.debug(e.message)
       self.logger.debug("Warning: chunks not available! Loading all data!")
-      tmp = self.load_all()
+      tmp = self._load_all()
       res = tmp[y_range[0]:y_range[1], x_range[0]:x_range[1]]
 
     return res
@@ -442,7 +442,7 @@ cdef class Tiff:
     if y_range[1] is None:
       y_range[1] = self.image_length
 
-    return self.get(y_range, x_range)
+    return self._get(y_range, x_range)
 
   def __array__(self, dtype=None):
     return self.__getitem__(slice(None))

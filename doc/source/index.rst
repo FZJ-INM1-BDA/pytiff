@@ -1,17 +1,18 @@
-Pytiff Doc
+Welcome to Pytiff
 ==========
 
-Quickstart
-==========
+`Pytiff <https://github.com/FZJ-INM1-BDA/pytiff>_` is a Python library for reading and writing large Tiff files.
+It supports tiled Tiffs and is able to read only a part of the image.
 
-todo.
-
-Contents:
+While this is pytiffs main advantage, it also supports reading of many other image formats and
+writing of greyscale images in tile or scanline mode.
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
 
-   modules
+   quickstart
+   pytiff
 
 Indices and tables
 ==================

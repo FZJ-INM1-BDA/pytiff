@@ -1,12 +1,9 @@
 pytiff package
 ==============
 
-Subpackages
------------
-
 .. toctree::
 
-    pytiff.test
+    pytiff
 
 Module contents
 ---------------
