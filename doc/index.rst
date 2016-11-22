@@ -11,14 +11,5 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-.. automodule:: pytiff
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   source/modules
+   
