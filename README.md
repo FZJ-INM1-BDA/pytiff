@@ -20,25 +20,43 @@ To install pytiff, clone the repo and call setup.py.
 ```bash
 git clone https://github.com/FZJ-INM1-BDA/pytiff.git
 cd pytiff
-python setup.py install
-# or pip install .
-```
-
-## Usage
-
-A small example how pytiff can be used:
-
-```python
-import pytiff
-
-with pytiff.Tiff("test_data/small_example_tiled.tif") as f:
-  part = f[100:200, :]
+pip install . # or python setup.py install
 ```
 
 ## Development
 
 For development:
 
-`python setup.py develop`
+```bash
+git clone https://github.com/FZJ-INM1-BDA/pytiff.git
+cd pytiff
+# git checkout development
+pip install -e . # or python setup.py develop
+```
 
 can be used, so that no reinstallation is needed for every update.
+If new updates are pulled the cython part has to be recompiled.
+```bash
+#compile cython part
+python setup.py build_ext --inplace
+```
+
+## Usage
+
+A small example how pytiff can be used:
+
+Reading:
+```python
+import pytiff
+
+with pytiff.Tiff("test_data/small_example_tiled.tif") as handle:
+  part = f[100:200, :]
+```
+
+Writing data from `pages` into a multipage tiff:
+```python
+import pytiff
+with pytiff.Tiff("test_data/tmp.tif", "w") as handle:
+  for p in pages:
+    handle.write(p, method="scanline")
+```
