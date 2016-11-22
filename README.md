@@ -20,6 +20,7 @@ To install pytiff, clone the repo and call setup.py.
 ```bash
 git clone https://github.com/FZJ-INM1-BDA/pytiff.git
 cd pytiff
+pip install -r requirements.txt
 pip install . # or python setup.py install
 ```
 
@@ -30,7 +31,8 @@ For development:
 ```bash
 git clone https://github.com/FZJ-INM1-BDA/pytiff.git
 cd pytiff
-# git checkout development
+# git checkout develop
+pip install -r requirements.txt
 pip install -e . # or python setup.py develop
 ```
 
