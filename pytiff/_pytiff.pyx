@@ -2,7 +2,7 @@
 """
 pytiff is a python wrapper for the libtiff c api written in cython. It is python 2 and 3 compatible.
 While there are some missing features, it supports reading chunks of tiled greyscale tif images as well as basic reading for color images.
-Apart from that multipage tiffs are supported.
+Apart from that multipage tiffs are supported. It also supports writing greyscale images in tiles or scanlines.
 """
 
 cimport ctiff
