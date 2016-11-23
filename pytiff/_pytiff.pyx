@@ -112,6 +112,8 @@ cdef class Tiff:
 
   Args:
     filename (string): The filename of the tiff file.
+    file_mode (string): File mode either "w" for writing or "r" for reading. Default: "r".
+    bigiff (bool): If True the file is assumed to be bigtiff. Default: False.
   """
   cdef ctiff.TIFF* tiff_handle
   cdef public short samples_per_pixel
