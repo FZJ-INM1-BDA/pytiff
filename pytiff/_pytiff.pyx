@@ -458,7 +458,7 @@ cdef class Tiff:
 
     Args:
         data (array_like): 2D numpy array. Supported dtypes: un(signed) integer, float.
-        method: determines which method is used for writing. Either "tile" for tiled tiffs or "scanline" for basic scanline tiffs.
+        method: determines which method is used for writing. Either "tile" for tiled tiffs or "scanline" for basic scanline tiffs. Default: "tile"
         photometric: determines how values are interpreted, either zero == black or zero == white.
                      MIN_IS_BLACK(default), MIN_IS_WHITE. more information can be found in the libtiff doc.
         planar_config: defaults to 1, component values for each pixel are stored contiguously.
@@ -480,7 +480,6 @@ cdef class Tiff:
 
     cdef short photometric, planar_config, compression
     cdef short sample_format, nbits
-    rows_per_strip = options.get("rows_per_strip", 100)
     photometric = options.get("photometric", MIN_IS_BLACK)
     planar_config = options.get("planar_config", 1)
     compression = options.get("compression", NO_COMPRESSION)
