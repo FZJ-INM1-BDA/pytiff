@@ -52,7 +52,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'pytiff'
-copyright = u'2016, Philipp Glock'
+copyright = u'2016, Forschungszentrum Juelich, Institute of Neuroscience and Medicine (INM-1)'
 author = u'Philipp Glock'
 
 # The version info for the project you're documenting, acts as replacement for
