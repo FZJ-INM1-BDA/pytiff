@@ -122,17 +122,17 @@ cdef class Tiff:
   cdef bool closed, cached
   cdef unsigned int image_width, image_length, tile_width, tile_length
   cdef object cache, logger
-  cdef str filename
-  cdef str file_mode
+  cdef public object filename
+  cdef object file_mode
 
-  def __cinit__(self, str filename, str file_mode="r", bool bigtiff=False):
+  def __cinit__(self, filename, file_mode="r", bigtiff=False):
     if bigtiff:
       file_mode += "8"
     tmp_filename = <string> filename
     tmp_mode = <string> file_mode
     self.closed = True
-    self.filename = filename
-    self.file_mode = file_mode
+    self.filename = tmp_filename
+    self.file_mode = tmp_mode
     self._write_mode_n_pages = 0
     self.n_pages = 0
     self.tiff_handle = ctiff.TIFFOpen(tmp_filename.c_str(), tmp_mode.c_str())
