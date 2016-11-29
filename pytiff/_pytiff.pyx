@@ -309,6 +309,11 @@ cdef class Tiff:
   def __exit__(self, type, value, traceback):
     self.close()
 
+  def __iter__(self):
+    for i in range(self.number_of_pages):
+      self.set_page(i)
+      yield self
+
   def _load_all(self):
     """Load the image at once.
 

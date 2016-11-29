@@ -116,6 +116,13 @@ def test_multi_page():
             assert tif.mode == MODE[i]
             assert tif.dtype == TYPE[i]
 
+def test_generator_multi_page():
+    with Tiff(MULTI_PAGE) as tif:
+        for i, page in enumerate(tif):
+            assert page.size == SIZE[i]
+            assert page.mode == MODE[i]
+            assert page.dtype == TYPE[i]
+
 def read_methods(filename):
     with tifffile.TiffFile(filename) as tif:
         for page in tif:
