@@ -112,6 +112,8 @@ cdef class Tiff:
 
   Args:
     filename (string): The filename of the tiff file.
+    file_mode (string): File mode either "w" for writing or "r" for reading. Default: "r".
+    bigiff (bool): If True the file is assumed to be bigtiff. Default: False.
   """
   cdef ctiff.TIFF* tiff_handle
   cdef public short samples_per_pixel
@@ -120,17 +122,17 @@ cdef class Tiff:
   cdef bool closed, cached
   cdef unsigned int image_width, image_length, tile_width, tile_length
   cdef object cache, logger
-  cdef str filename
-  cdef str file_mode
+  cdef public object filename
+  cdef object file_mode
 
-  def __cinit__(self, str filename, str file_mode="r", bool bigtiff=False):
+  def __cinit__(self, filename, file_mode="r", bigtiff=False):
     if bigtiff:
       file_mode += "8"
     tmp_filename = <string> filename
     tmp_mode = <string> file_mode
     self.closed = True
-    self.filename = filename
-    self.file_mode = file_mode
+    self.filename = tmp_filename
+    self.file_mode = tmp_mode
     self._write_mode_n_pages = 0
     self.n_pages = 0
     self.tiff_handle = ctiff.TIFFOpen(tmp_filename.c_str(), tmp_mode.c_str())
@@ -307,6 +309,11 @@ cdef class Tiff:
   def __exit__(self, type, value, traceback):
     self.close()
 
+  def __iter__(self):
+    for i in range(self.number_of_pages):
+      self.set_page(i)
+      yield self
+
   def _load_all(self):
     """Load the image at once.
 
@@ -456,7 +463,7 @@ cdef class Tiff:
 
     Args:
         data (array_like): 2D numpy array. Supported dtypes: un(signed) integer, float.
-        method: determines which method is used for writing. Either "tile" for tiled tiffs or "scanline" for basic scanline tiffs.
+        method: determines which method is used for writing. Either "tile" for tiled tiffs or "scanline" for basic scanline tiffs. Default: "tile"
         photometric: determines how values are interpreted, either zero == black or zero == white.
                      MIN_IS_BLACK(default), MIN_IS_WHITE. more information can be found in the libtiff doc.
         planar_config: defaults to 1, component values for each pixel are stored contiguously.
@@ -478,7 +485,6 @@ cdef class Tiff:
 
     cdef short photometric, planar_config, compression
     cdef short sample_format, nbits
-    rows_per_strip = options.get("rows_per_strip", 100)
     photometric = options.get("photometric", MIN_IS_BLACK)
     planar_config = options.get("planar_config", 1)
     compression = options.get("compression", NO_COMPRESSION)
