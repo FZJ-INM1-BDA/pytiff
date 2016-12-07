@@ -1,8 +1,21 @@
 from setuptools import setup
 from distutils.extension import Extension
-from Cython.Build import cythonize
-from Cython.Distutils import build_ext
-import numpy
+import pip
+try:
+    from Cython.Build import cythonize
+    from Cython.Distutils import build_ext
+except:
+    print("Installing Cython because it is needed in setup.py")
+    pip.main(["install", "cython"])
+    from Cython.Build import cythonize
+    from Cython.Distutils import build_ext
+
+try:
+    import numpy
+except:
+    print("Installing numpy because it is needed in setup.py")
+    pip.main(["install", "numpy"])
+    import numpy
 import sys
 import os
 import pytiff._version as _version
