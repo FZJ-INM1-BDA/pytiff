@@ -1,6 +1,6 @@
 # pytiff
 
-pytiff is a lightweight library for reading chunks from a tiff file. While it supports other formats to some extend, it is focused on reading tiled greyscale/rgb images, that can also be bigtiffs. Writing tiff files is not supported at all currently. Pytiff supports numpy like slicing and uses numpy arrays to handle image data.
+pytiff is a lightweight library for reading chunks from a tiff file. While it supports other formats to some extend, it is focused on reading tiled greyscale/rgb images, that can also be bigtiffs. Writing tiff files is now partly supported. It is able to save uncompressed greyscale images in tiled or scanline format. More information can be found in the documentation. Pytiff supports numpy like slicing and uses numpy arrays to handle image data.
 
 The libtiff library is wrapped using the Cython package.
 
