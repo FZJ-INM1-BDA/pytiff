@@ -9,7 +9,7 @@ def is_bigtiff(filename):
     Returns:
         bool: True if the file is a bigtiff, False otherwise.
     """
-    with open(filename) as handle:
+    with open(filename, "rb") as handle:
         byteorder = {b'II': '<', b'MM': '>'}[handle.read(2)]
         version = struct.unpack(byteorder + 'H', handle.read(2))[0]
         if version == 43:
@@ -26,6 +26,6 @@ def byteorder(filename):
     Returns:
         str: '<' for little endian, '>' for big endian.
     """
-    with open(filename) as handle:
+    with open(filename, "rb") as handle:
         tmp = {b'II': '<', b'MM': '>'}[handle.read(2)]
         return tmp
