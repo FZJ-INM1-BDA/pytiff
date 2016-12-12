@@ -1,6 +1,14 @@
 import struct
 
 def is_bigtiff(filename):
+    """Check if a tiff image is bigtiff or not.
+
+    Args:
+        filename (str): Filename of a tiff image.
+
+    Returns:
+        bool: True if the file is a bigtiff, False otherwise.
+    """
     with open(filename) as handle:
         byteorder = {b'II': '<', b'MM': '>'}[handle.read(2)]
         version = struct.unpack(byteorder + 'H', handle.read(2))[0]
