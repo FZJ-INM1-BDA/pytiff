@@ -30,6 +30,17 @@ def test_greyscale_tiled():
         assert tif.is_tiled()
     read_methods(TILED_GREY)
 
+def test_large_slice():
+    with Tiff(TILED_GREY) as tif:
+        assert tif.is_tiled()
+        data = tif[:]
+
+    with Tiff(TILED_GREY) as tif:
+        shape = tif.shape
+        large = tif[0:shape[0]+100, 0:shape[1]+33]
+
+    assert np.all(data == large)
+
 def test_greyscale_not_tiled():
     with Tiff(NOT_TILED_GREY) as tif:
         assert not tif.is_tiled()
