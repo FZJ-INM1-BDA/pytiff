@@ -440,13 +440,13 @@ cdef class Tiff:
     x_range = np.array((index[1].start, index[1].stop))
     if x_range[0] is None:
       x_range[0] = 0
-    if x_range[1] is None:
+    if x_range[1] is None or x_range[1] > self.image_width:
       x_range[1] = self.image_width
 
     y_range = np.array((index[0].start, index[0].stop))
     if y_range[0] is None:
       y_range[0] = 0
-    if y_range[1] is None:
+    if y_range[1] is None or y_range[1] > self.image_length:
       y_range[1] = self.image_length
 
     return self._get(y_range, x_range)
