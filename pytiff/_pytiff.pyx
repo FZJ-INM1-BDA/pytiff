@@ -112,7 +112,7 @@ cdef class Tiff:
 
   Args:
     filename (string): The filename of the tiff file.
-    file_mode (string): File mode either "w" for writing or "r" for reading. Default: "r".
+    file_mode (string): File mode either "w" for writing (old data is deleted), "a" for appending or "r" for reading. Default: "r".
     bigiff (bool): If True the file is assumed to be bigtiff. Default: False.
   """
   cdef ctiff.TIFF* tiff_handle
@@ -480,7 +480,7 @@ cdef class Tiff:
     """
     if data.ndim > 2:
       raise NotImplementedError("Only grayscale image implemented.")
-    if "w" not in self.file_mode:
+    if self.file_mode not in ["w", "a"]:
       raise Exception("Write is only supported in .. write mode ..")
 
     cdef short photometric, planar_config, compression

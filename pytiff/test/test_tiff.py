@@ -376,3 +376,22 @@ def test_write_float64_tile(data):
         assert np.all(data == img)
 
     subprocess.call(["rm", OUT_FILE])
+
+@settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
+@given(data=random_matrix(dtype=np.int8, min_row=100, max_row=500, min_col=100, max_col=500))
+def test_append_int8_tile(data):
+    with Tiff(OUT_FILE, "w") as handle:
+        handle.write(data, method="tile", tile_width=16, tile_length=16)
+
+    with Tiff(OUT_FILE, "a") as handle:
+        handle.write(data, method="tile", tile_width=16, tile_length=16)
+
+    with Tiff(OUT_FILE, "r") as handle:
+        assert handle.number_of_pages == 2
+
+    with tifffile.TiffFile(OUT_FILE) as handle:
+        img = handle.asarray()
+        assert data.dtype == img.dtype
+        assert np.all(data == img)
+
+    subprocess.call(["rm", OUT_FILE])
