@@ -541,6 +541,35 @@ cdef class Tiff:
         ctiff.TIFFWriteScanline(self.tiff_handle, <void *>row.data, i, 0)
       ctiff.TIFFWriteDirectory(self.tiff_handle)
 
+  def write_from_tiff_file(self, image,  **options):
+    cdef short photometric, planar_config, compression
+    cdef short sample_format, nbits
+    cdef int length, width
+    photometric = options.get("photometric", MIN_IS_BLACK)
+    planar_config = options.get("planar_config", 1)
+    compression = options.get("compression", NO_COMPRESSION)
+
+    sample_format, nbits = (1, 16)
+
+    length = image.shape[0]
+    width = image.shape[1]
+
+    ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
+    ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
+    ctiff.TIFFSetField(self.tiff_handle, IMAGELENGTH, length)
+    ctiff.TIFFSetField(self.tiff_handle, IMAGEWIDTH, width)
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLE_FORMAT, sample_format)
+    ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
+    ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
+    ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
+    cdef np.ndarray row
+    for i in range(image.shape[0]):
+        row = image[i:i+1]
+        ctiff.TIFFWriteScanline(self.tiff_handle, <void *>row.data, i, 0)
+    ctiff.TIFFWriteDirectory(self.tiff_handle)
+    self._write_mode_n_pages += 1
+
   cdef _read_tile(self, unsigned int y, unsigned int x):
     cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.n_samples),dtype=self.dtype).squeeze()
     cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, x, y, 0, 0)
