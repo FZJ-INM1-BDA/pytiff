@@ -609,13 +609,14 @@ cdef class Tiff:
     n_tile_rows = int(np.ceil(data.shape[0] / float(tile_length)))
     n_tile_cols = int(np.ceil(data.shape[1] / float(tile_width)))
 
+    dtype = data.dtype
     cdef unsigned int x, y
     for i in range(n_tile_rows):
       for j in range(n_tile_cols):
         y = i * tile_length
         x = j * tile_width
         buffer = data[y:(i+1)*tile_length, x:(j+1)*tile_width]
-        buffer.astype("uint16")
+        buffer.astype(dtype)
         buffer = np.pad(buffer, ((0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])), "constant", constant_values=(0))
 
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x_chunk+x, y_chunk+y, 0, 0)
