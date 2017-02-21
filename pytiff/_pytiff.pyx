@@ -550,7 +550,6 @@ cdef class Tiff:
     compression = options.get("compression", NO_COMPRESSION)
 
     sample_format, nbits = (1, 16)
-
     length = image.shape[0]
     width = image.shape[1]
 
@@ -563,10 +562,66 @@ cdef class Tiff:
     ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
     ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
     ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
+
     cdef np.ndarray row
     for i in range(image.shape[0]):
         row = image[i:i+1]
         ctiff.TIFFWriteScanline(self.tiff_handle, <void *>row.data, i, 0)
+    ctiff.TIFFWriteDirectory(self.tiff_handle)
+    self._write_mode_n_pages += 1
+
+
+  def init_write_chunk(self, image_size, dtype, **options):
+    cdef short photometric, planar_config, compression
+    cdef short sample_format, nbits
+    cdef int length, width
+    photometric = options.get("photometric", MIN_IS_BLACK)
+    planar_config = options.get("planar_config", 1)
+    compression = options.get("compression", NO_COMPRESSION)
+
+    sample_format, nbits = INVERSE_TYPE_MAP[dtype]
+    length = image_size[0]
+    width = image_size[1]
+
+    ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
+    ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
+    ctiff.TIFFSetField(self.tiff_handle, IMAGELENGTH, length)
+    ctiff.TIFFSetField(self.tiff_handle, IMAGEWIDTH, width)
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLE_FORMAT, sample_format)
+    ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
+    ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
+    ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
+
+  def write_chunk(self, np.ndarray data, **options):
+
+    cdef short tile_length, tile_width
+    tile_length = options.get("tile_length", 240)
+    tile_width = options.get("tile_width", 240)
+
+    x_chunk = options.get("x_pos",0)
+    y_chunk = options.get("y_pos",0)
+
+    ctiff.TIFFSetField(self.tiff_handle, TILE_LENGTH, tile_length)
+    ctiff.TIFFSetField(self.tiff_handle, TILE_WIDTH, tile_width)
+
+    cdef np.ndarray buffer
+    n_tile_rows = int(np.ceil(data.shape[0] / float(tile_length)))
+    n_tile_cols = int(np.ceil(data.shape[1] / float(tile_width)))
+
+    cdef unsigned int x, y
+    for i in range(n_tile_rows):
+      for j in range(n_tile_cols):
+        y = i * tile_length
+        x = j * tile_width
+        buffer = data[y:(i+1)*tile_length, x:(j+1)*tile_width]
+        buffer.astype("uint16")
+        buffer = np.pad(buffer, ((0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])), "constant", constant_values=(0))
+
+        ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x_chunk+x, y_chunk+y, 0, 0)
+
+
+  def finish_write_chunk(self):
     ctiff.TIFFWriteDirectory(self.tiff_handle)
     self._write_mode_n_pages += 1
 
