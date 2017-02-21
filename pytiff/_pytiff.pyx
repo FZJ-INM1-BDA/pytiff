@@ -119,7 +119,7 @@ cdef class Tiff:
   cdef public short samples_per_pixel
   cdef short[:] n_bits_view
   cdef short sample_format, n_pages, extra_samples, _write_mode_n_pages
-  cdef bool closed, cached
+  cdef bool closed, cached, _unsaved_page
   cdef unsigned int image_width, image_length, tile_width, tile_length
   cdef object cache, logger
   cdef public object filename
@@ -139,6 +139,7 @@ cdef class Tiff:
     if self.tiff_handle is NULL:
       raise IOError("file not found!")
     self.closed = False
+    self._unsaved_page = False
 
     self.logger = logging.getLogger(_package)
     self.logger.debug("Tiff object created. file: {}".format(filename))
@@ -541,37 +542,10 @@ cdef class Tiff:
         ctiff.TIFFWriteScanline(self.tiff_handle, <void *>row.data, i, 0)
       ctiff.TIFFWriteDirectory(self.tiff_handle)
 
-  def write_from_tiff_file(self, image,  **options):
-    cdef short photometric, planar_config, compression
-    cdef short sample_format, nbits
-    cdef int length, width
-    photometric = options.get("photometric", MIN_IS_BLACK)
-    planar_config = options.get("planar_config", 1)
-    compression = options.get("compression", NO_COMPRESSION)
+  def new_page(self, image_size, dtype, **options):
 
-    sample_format, nbits = (1, 16)
-    length = image.shape[0]
-    width = image.shape[1]
-
-    ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
-    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
-    ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
-    ctiff.TIFFSetField(self.tiff_handle, IMAGELENGTH, length)
-    ctiff.TIFFSetField(self.tiff_handle, IMAGEWIDTH, width)
-    ctiff.TIFFSetField(self.tiff_handle, SAMPLE_FORMAT, sample_format)
-    ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
-    ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
-    ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
-
-    cdef np.ndarray row
-    for i in range(image.shape[0]):
-        row = image[i:i+1]
-        ctiff.TIFFWriteScanline(self.tiff_handle, <void *>row.data, i, 0)
-    ctiff.TIFFWriteDirectory(self.tiff_handle)
-    self._write_mode_n_pages += 1
-
-
-  def init_write_chunk(self, image_size, dtype, **options):
+    if self._unsaved_page:
+        self.save_page()
     cdef short photometric, planar_config, compression
     cdef short sample_format, nbits
     cdef int length, width
@@ -592,8 +566,18 @@ cdef class Tiff:
     ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
     ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
     ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
+    self._unsaved_page = True
 
-  def write_chunk(self, np.ndarray data, **options):
+  def __setitem__(self, key, item):
+    x_start = key[1].start
+    x_stop = key[1].stop
+    y_start = key[0].start
+    y_stop = key[0].stop
+    #tile_length = (1+(y_stop-y_start)//16)*16
+    #tile_width = (1+(x_stop-x_start)//16)*16
+    self._write_chunk(item, x_pos=x_start, y_pos=y_start)
+
+  def _write_chunk(self, np.ndarray data, **options):
 
     cdef short tile_length, tile_width
     tile_length = options.get("tile_length", 240)
@@ -622,7 +606,8 @@ cdef class Tiff:
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x_chunk+x, y_chunk+y, 0, 0)
 
 
-  def finish_write_chunk(self):
+  def save_page(self):
+    self._unsaved_page = False
     ctiff.TIFFWriteDirectory(self.tiff_handle)
     self._write_mode_n_pages += 1
 
