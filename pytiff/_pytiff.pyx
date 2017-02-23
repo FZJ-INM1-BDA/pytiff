@@ -543,7 +543,20 @@ cdef class Tiff:
       ctiff.TIFFWriteDirectory(self.tiff_handle)
 
   def new_page(self, image_size, dtype, **options):
+    """ adds a new page to the tiff file, and initializes chunk writing
 
+
+    Args:
+        image_size (array like (integer)): the size of the image
+        dytpe (np.dtype): the dtype of the image
+        photometric: determines how values are interpreted, either zero == black or zero == white.
+                     MIN_IS_BLACK(default), MIN_IS_WHITE. more information can be found in the libtiff doc.
+        planar_config: defaults to 1, component values for each pixel are stored contiguously.
+                      2 says components are stored in component planes. Irrelevant for greyscale images.
+        compression: compression level. defaults to no compression. More information can be found in the libtiff doc.
+        tile_length: sets the length of a tile. Must be a multiple of 16. Default: 256
+        tile_width: sets the width of a tile. Must be a multiple of 16. Default: 256
+    """
     if self._unsaved_page:
         self.save_page()
     cdef short photometric, planar_config, compression
@@ -558,8 +571,8 @@ cdef class Tiff:
     width = image_size[1]
 
     cdef unsigned int tile_length, tile_width
-    tile_length = options.get("tile_length", 240)
-    tile_width = options.get("tile_width", 240)
+    tile_length = options.get("tile_length", 256)
+    tile_width = options.get("tile_width", 256)
     self.tile_length = tile_length
     self.tile_width = tile_width
     ctiff.TIFFSetField(self.tiff_handle, TILELENGTH, tile_length)
@@ -582,6 +595,7 @@ cdef class Tiff:
     self._unsaved_page = True
 
   def __setitem__(self, key, item):
+    """ enables chunkwise writing uses _chunk_writing """
     x_start = key[1].start
     x_stop = key[1].stop
     y_start = key[0].start
@@ -589,6 +603,12 @@ cdef class Tiff:
     self._write_chunk(item, x_pos=x_start, y_pos=y_start)
 
   def _write_chunk(self, np.ndarray data, **options):
+    """ writes a chunk at the given position
+
+    Args:
+        data (np.ndarray): the chunk of the image
+        x_pos, y_pos (integer): sets the postiton where the chunk is written Default:0
+    """
 
     x_chunk = options.get("x_pos",0)
     y_chunk = options.get("y_pos",0)
@@ -616,9 +636,11 @@ cdef class Tiff:
 
 
   def save_page(self):
-    self._unsaved_page = False
-    ctiff.TIFFWriteDirectory(self.tiff_handle)
-    self._write_mode_n_pages += 1
+    """ saves the page """
+    if self._unsaved_page:
+        self._unsaved_page = False
+        ctiff.TIFFWriteDirectory(self.tiff_handle)
+        self._write_mode_n_pages += 1
 
   cdef _read_tile(self, unsigned int y, unsigned int x):
     cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.n_samples),dtype=self.dtype).squeeze()
