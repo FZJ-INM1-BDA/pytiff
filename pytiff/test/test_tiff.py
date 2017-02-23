@@ -395,3 +395,18 @@ def test_append_int8_tile(data):
         assert np.all(data == img)
 
     subprocess.call(["rm", OUT_FILE])
+
+@settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
+@given(data1=random_matrix(dtype=np.int8, min_row=100, max_row=500, min_col=100, max_col=500),
+       data2=random_matrix(dtype=np.int8, min_row=100, max_row=500, min_col=100, max_col=500),
+       data3=random_matrix(dtype=np.int8, min_row=100, max_row=500, min_col=100, max_col=500),
+       data4=random_matrix(dtype=np.int8, min_row=100, max_row=500, min_col=100, max_col=500))
+def test_write_chunk(data1, data2, data3, data4):
+    with Tiff(OUT_FILE, "w")as handle:
+        chunks = [data1, data2, data3, data4]
+        handle.new_page((2000, 2000), dytep=np.int8, tile_length=16, tile_width=16)
+        for i in range(4):
+            x_pos = i % 2
+            y_pos = i // 2
+            handle[x_pos: x_pos+500, y_pos: y_pos+500] = chunks[i]
+        handle.save_page()
