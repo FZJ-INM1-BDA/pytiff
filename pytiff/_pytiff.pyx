@@ -557,6 +557,19 @@ cdef class Tiff:
     length = image_size[0]
     width = image_size[1]
 
+    cdef unsigned int tile_length, tile_width
+    tile_length = options.get("tile_length", 240)
+    tile_width = options.get("tile_width", 240)
+    self.tile_length = tile_length
+    self.tile_width = tile_width
+    ctiff.TIFFSetField(self.tiff_handle, TILELENGTH, tile_length)
+    ctiff.TIFFSetField(self.tiff_handle, TILEWIDTH, tile_width)
+
+
+    length = int((ceil(length/tile_length)+1)*tile_length)
+    width = int((ceil(width/tile_width)+1)*tile_width)
+
+
     ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
     ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
     ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
@@ -573,21 +586,17 @@ cdef class Tiff:
     x_stop = key[1].stop
     y_start = key[0].start
     y_stop = key[0].stop
-    #tile_length = (1+(y_stop-y_start)//16)*16
-    #tile_width = (1+(x_stop-x_start)//16)*16
     self._write_chunk(item, x_pos=x_start, y_pos=y_start)
 
   def _write_chunk(self, np.ndarray data, **options):
 
-    cdef short tile_length, tile_width
-    tile_length = options.get("tile_length", 240)
-    tile_width = options.get("tile_width", 240)
-
     x_chunk = options.get("x_pos",0)
     y_chunk = options.get("y_pos",0)
 
-    ctiff.TIFFSetField(self.tiff_handle, TILE_LENGTH, tile_length)
-    ctiff.TIFFSetField(self.tiff_handle, TILE_WIDTH, tile_width)
+    cdef unsigned int tile_length, tile_width
+    tile_length = self.tile_length
+    tile_width = self.tile_width
+
 
     cdef np.ndarray buffer
     n_tile_rows = int(np.ceil(data.shape[0] / float(tile_length)))
