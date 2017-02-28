@@ -404,7 +404,7 @@ def test_append_int8_tile(data):
 def test_write_chunk(data1, data2, data3, data4):
     with Tiff(OUT_FILE, "w")as handle:
         chunks = [data1, data2, data3, data4]
-        handle.new_page((2000, 2000), dytep=np.int8, tile_length=16, tile_width=16)
+        handle.new_page((2000, 2000), dtype=np.int8, tile_length=16, tile_width=16)
         for i in range(4):
             x_pos = i % 2
             y_pos = i // 2
