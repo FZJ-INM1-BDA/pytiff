@@ -579,8 +579,8 @@ cdef class Tiff:
     ctiff.TIFFSetField(self.tiff_handle, TILEWIDTH, tile_width)
 
 
-    length = int((ceil(length/tile_length)+1)*tile_length)
-    width = int((ceil(width/tile_width)+1)*tile_width)
+    length = int((ceil(length/tile_length))*tile_length)
+    width = int((ceil(width/tile_width))*tile_width)
 
 
     ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
