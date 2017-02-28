@@ -566,9 +566,13 @@ cdef class Tiff:
     planar_config = options.get("planar_config", 1)
     compression = options.get("compression", NO_COMPRESSION)
 
+    # cast to numpy.dtype. if this is not done, keys are not matching.
+    dtype = np.dtype(dtype)
     sample_format, nbits = INVERSE_TYPE_MAP[dtype]
     length = image_size[0]
     width = image_size[1]
+    self.image_length = image_size[0]
+    self.image_width = image_size[1]
 
     cdef unsigned int tile_length, tile_width
     tile_length = options.get("tile_length", 256)
@@ -579,8 +583,8 @@ cdef class Tiff:
     ctiff.TIFFSetField(self.tiff_handle, TILEWIDTH, tile_width)
 
 
-    length = int((ceil(length/tile_length)+1)*tile_length)
-    width = int((ceil(width/tile_width)+1)*tile_width)
+    #length = int((ceil(length/tile_length)+1)*tile_length)
+    #width = int((ceil(width/tile_width)+1)*tile_width)
 
 
     ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
@@ -596,11 +600,33 @@ cdef class Tiff:
 
   def __setitem__(self, key, item):
     """ enables chunkwise writing uses _chunk_writing """
-    x_start = key[1].start
-    x_stop = key[1].stop
-    y_start = key[0].start
-    y_stop = key[0].stop
-    self._write_chunk(item, x_pos=x_start, y_pos=y_start)
+    if not isinstance(key, tuple):
+      if isinstance(key, slice):
+        key = (key, slice(None,None,None))
+      else:
+        raise Exception("Only slicing is supported")
+    elif len(key) < 3:
+      key = key[0],key[1],0
+
+    if not isinstance(key[0], slice) or not isinstance(key[1], slice):
+      raise Exception("Only slicing is supported")
+
+    x_range = np.array((key[1].start, key[1].stop))
+    if x_range[0] is None:
+      x_range[0] = 0
+    if x_range[1] is None or x_range[1] > self.image_width:
+      x_range[1] = self.image_width
+
+    y_range = np.array((key[0].start, key[0].stop))
+    if y_range[0] is None:
+      y_range[0] = 0
+    if y_range[1] is None or y_range[1] > self.image_length:
+      y_range[1] = self.image_length
+
+    shape = y_range[1] - y_range[0], x_range[1] - x_range[0]
+    if shape != item.shape:
+      raise ValueError("data shape :{} is not matching to the slice: {}".format(item.shape, shape))
+    self._write_chunk(item, x_pos=x_range[0], y_pos=y_range[0])
 
   def _write_chunk(self, np.ndarray data, **options):
     """ writes a chunk at the given position
