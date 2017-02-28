@@ -582,16 +582,6 @@ cdef class Tiff:
     ctiff.TIFFSetField(self.tiff_handle, TILELENGTH, tile_length)
     ctiff.TIFFSetField(self.tiff_handle, TILEWIDTH, tile_width)
 
-
-<<<<<<< HEAD
-    #length = int((ceil(length/tile_length)+1)*tile_length)
-    #width = int((ceil(width/tile_width)+1)*tile_width)
-=======
-    length = int((ceil(float(length)/tile_length))*tile_length)
-    width = int((ceil(float(width)/tile_width))*tile_width)
->>>>>>> 8218fdbdf91234567f8ea18f9aa733c1d2c51d03
-
-
     ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
     ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
     ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)

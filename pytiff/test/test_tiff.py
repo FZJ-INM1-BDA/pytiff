@@ -430,6 +430,8 @@ def test_write_chunk(data1, data2, data3, data4):
             data = handle[row:row_end, col:col_end]
             assert np.all(data == chunk)
 
+    subprocess.call(["rm", OUT_FILE])
+
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
 @given(data1=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500),
        data2=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500),
@@ -445,10 +447,10 @@ def test_write_chunk_multiple_pages(data1, data2, data3, data4):
             handle[:] = c
 
     with Tiff(OUT_FILE) as handle:
-        count = 0
-        for page, chunk in zip(handle, chunks):
-            print("page: {}".format(count))
-            count += 1
-            data = page[:]
+        for page, chunk in enumerate(chunks):
+            handle.set_page(page)
+            data = handle[:]
             assert data.shape == chunk.shape
             assert np.all(data == chunk)
+
+    subprocess.call(["rm", OUT_FILE])
