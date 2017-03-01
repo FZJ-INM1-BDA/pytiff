@@ -67,6 +67,7 @@ cdef unsigned int PLANARCONFIG = 284
 cdef unsigned int MIN_IS_BLACK = 1
 cdef unsigned int MIN_IS_WHITE = 0
 cdef unsigned int NO_COMPRESSION = 1
+cdef unsigned int IMAGE_DESCRIPTION = 270
 
 def tiff_version_raw():
   """Return the raw version string of libtiff."""
@@ -173,6 +174,16 @@ cdef class Tiff:
         self.extra_samples += 1
 
     self.cached = False
+
+  @property
+  def description(self):
+    """Returns the image description. If not available, returns None."""
+    cdef char* desc = ''
+    ctiff.TIFFGetField(self.tiff_handle, IMAGE_DESCRIPTION, &desc)
+    str = <string>desc
+    if str == "":
+      str = None
+    return str
 
   def close(self):
     """Close the filehandle."""
