@@ -177,9 +177,12 @@ cdef class Tiff:
 
   @property
   def description(self):
+    """Returns the image description. If not available, returns None."""
     cdef char* desc = ''
     ctiff.TIFFGetField(self.tiff_handle, IMAGE_DESCRIPTION, &desc)
     str = <string>desc
+    if str == "":
+      str = None
     return str
 
   def close(self):
