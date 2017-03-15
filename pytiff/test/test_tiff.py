@@ -430,6 +430,12 @@ def test_write_chunk(data1, data2, data3, data4):
             data = handle[row:row_end, col:col_end]
             assert np.all(data == chunk)
 
+    with Tiff(OUT_FILE) as handle:
+        with pytest.raises(ValueError):
+            handle.new_page((50, 50), np.dtype("uint8"))
+            handle[:, :] = np.random.rand(50, 50)
+            handle.save_page()
+
     subprocess.call(["rm", OUT_FILE])
 
 @settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
