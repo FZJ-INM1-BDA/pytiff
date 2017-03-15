@@ -124,6 +124,7 @@ cdef class Tiff:
   cdef object cache, logger
   cdef public object filename
   cdef object file_mode
+  cdef dtype
 
   def __cinit__(self, filename, file_mode="r", bigtiff=False):
     if bigtiff:
@@ -567,6 +568,7 @@ cdef class Tiff:
     compression = options.get("compression", NO_COMPRESSION)
 
     # cast to numpy.dtype. if this is not done, keys are not matching.
+    self.dtype = dtype
     dtype = np.dtype(dtype)
     sample_format, nbits = INVERSE_TYPE_MAP[dtype]
     length = image_size[0]
@@ -621,6 +623,8 @@ cdef class Tiff:
     shape = y_range[1] - y_range[0], x_range[1] - x_range[0]
     if shape != item.shape:
       raise ValueError("data shape :{} is not matching to the slice: {}".format(item.shape, shape))
+    if self.dtype != item.dtype:
+        raise ValueError("data dtype :{} is not matching to the image dtype: {}".format(item.dtype, self.dtype))
     self._write_chunk(item, x_pos=x_range[0], y_pos=y_range[0])
 
   def _write_chunk(self, np.ndarray data, **options):
