@@ -124,7 +124,7 @@ cdef class Tiff:
   cdef object cache, logger
   cdef public object filename
   cdef object file_mode
-  cdef dtype
+  cdef _dtype_write
 
   def __cinit__(self, filename, file_mode="r", bigtiff=False):
     if bigtiff:
@@ -239,6 +239,8 @@ cdef class Tiff:
       If the mode is 'greyscale', the dtype is the type of the first sample.
       Since greyscale images only have one sample per pixel, this resembles the general dtype.
     """
+    if "a" in self.file_mode or "w" in self.file_mode:
+      return self._dtype_write.type
     if self.mode == "rgb":
       self.logger.debug("RGB Image assumed for dtype.")
       return np.uint8
@@ -378,8 +380,11 @@ cdef class Tiff:
 
     large = (end_y - start_y) * self.tile_length, (end_x - start_x) * self.tile_width, z_size
 
+    self.logger.debug("loading tiled, dtype: {}".format(self.dtype))
     cdef np.ndarray large_buf = np.zeros(large, dtype=self.dtype).squeeze()
     cdef np.ndarray arr_buf = np.zeros(shape, dtype=self.dtype).squeeze()
+    self.logger.debug("large_buf dtype: {}".format(large_buf.dtype))
+    self.logger.debug("arr_buf dtype: {}".format(arr_buf.dtype))
     cdef unsigned int np_x, np_y
     np_x = 0
     np_y = 0
@@ -428,6 +433,7 @@ cdef class Tiff:
     return res
 
   def __getitem__(self, index):
+    self.logger.debug("__getitem__ called")
     if not isinstance(index, tuple):
       if isinstance(index, slice):
         index = (index, slice(None,None,None))
@@ -482,7 +488,7 @@ cdef class Tiff:
     """
     if data.ndim > 2:
       raise NotImplementedError("Only grayscale image implemented.")
-    if self.file_mode not in ["w", "a"]:
+    if self.file_mode not in ["w", "a", "w8", "a8"]:
       raise Exception("Write is only supported in .. write mode ..")
 
     cdef short photometric, planar_config, compression
@@ -568,7 +574,7 @@ cdef class Tiff:
     compression = options.get("compression", NO_COMPRESSION)
 
     # cast to numpy.dtype. if this is not done, keys are not matching.
-    self.dtype = dtype
+    self._dtype_write = np.dtype(dtype)
     dtype = np.dtype(dtype)
     sample_format, nbits = INVERSE_TYPE_MAP[dtype]
     length = image_size[0]
@@ -597,6 +603,7 @@ cdef class Tiff:
 
   def __setitem__(self, key, item):
     """ enables chunkwise writing uses _chunk_writing """
+    self.logger.debug("__setitem__ called")
     if not isinstance(key, tuple):
       if isinstance(key, slice):
         key = (key, slice(None,None,None))
@@ -623,7 +630,7 @@ cdef class Tiff:
     shape = y_range[1] - y_range[0], x_range[1] - x_range[0]
     if shape != item.shape:
       raise ValueError("data shape :{} is not matching to the slice: {}".format(item.shape, shape))
-    if self.dtype != item.dtype:
+    if self._dtype_write != np.dtype(item.dtype):
         raise ValueError("data dtype :{} is not matching to the image dtype: {}".format(item.dtype, self.dtype))
     self._write_chunk(item, x_pos=x_range[0], y_pos=y_range[0])
 
