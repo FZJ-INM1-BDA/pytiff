@@ -1,53 +1,48 @@
 from setuptools import setup
 from distutils.extension import Extension
-import pip
+
 try:
     from Cython.Build import cythonize
     from Cython.Distutils import build_ext
 except:
-    print("Installing Cython because it is needed in setup.py")
-    pip.main(["install", "cython"])
-    from Cython.Build import cythonize
-    from Cython.Distutils import build_ext
+    use_cython = False
+else:
+    use_cython = True
 
 try:
     import numpy
 except:
-    print("Installing numpy because it is needed in setup.py")
-    pip.main(["install", "numpy"])
-    import numpy
+    raise Exception("Numpy is needed for installation")
+
 import sys
-import os
 import pytiff._version as _version
 
-directives = {}
-macros = []
+ext = ".pyx" if use_cython else ".cpp"
 
-if "--cov" in sys.argv:
-    print("Compiling with Coverage on")
-    directives = {"linetrace": True}
-    macros = [("CYTHON_TRACE", "1")]
-    print(directives)
-    print(macros)
-    sys.argv.remove("--cov")
+extensions = [
+    Extension("pytiff._pytiff", ["pytiff/_pytiff.pyx"],
+    libraries=["tiff"],
+    include_dirs=["./pytiff", numpy.get_include()],
+    language="c++",
+    )]
 
+if use_cython:
+    extensions = cythonize(extensions)
 
 setup(
-    ext_modules = cythonize([
-        Extension("pytiff._pytiff", ["pytiff/_pytiff.pyx"],
-        libraries=["tiff"],
-        include_dirs=["./pytiff", numpy.get_include()],
-        language="c++",
-        define_macros=macros,
-        )
-    ],
-    compiler_directives=directives),
-    cmdclass = {"build_ext": build_ext},
+    ext_modules = extensions,
+    setup_requires=["pytest-runner"],
+    tests_require=["pytest", "hypothesis"],
     name="pytiff",
     version=_version.__version__,
     packages=["pytiff", "pytiff._version"],
     package_dir={
         "pytiff" : "pytiff",
     },
-    license="BSD"
+    license="BSD",
+    description="A libtiff wrapper to read tiled tiff images",
+    long_description="Pytiff is a Python library for reading and writing large Tiff files. It supports tiled Tiffs and is able to read only a part of the image. While this is pytiffs main advantage, it also supports reading of many other image formats and writing of greyscale images in tile or scanline mode.",
+    url="https://github.com/FZJ-INM1-BDA/pytiff",
+    author="Big Data Analytics Group, INM-1, Research Center Juelich",
+    author_email="p.glock@fz-juelich.de"
 )

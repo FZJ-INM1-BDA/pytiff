@@ -395,3 +395,68 @@ def test_append_int8_tile(data):
         assert np.all(data == img)
 
     subprocess.call(["rm", OUT_FILE])
+
+@settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
+@given(data1=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500),
+       data2=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500),
+       data3=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500),
+       data4=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500))
+def test_write_chunk(data1, data2, data3, data4):
+    with Tiff(OUT_FILE, "w")as handle:
+        chunks = [data1, data2, data3, data4]
+        handle.new_page((2000, 2000), dtype=np.uint8, tile_length=16, tile_width=16)
+        row = 0
+        col = 0
+        max_row_end = 0
+        positions = []
+        for c in chunks:
+            shape = c.shape
+            row_end, col_end = row + shape[0], col + shape[1]
+            max_row_end = max(max_row_end, row_end)
+            handle[row:row_end, col:col_end] = c
+            # save for reading chunks
+            positions.append([row, row_end, col, col_end])
+            if col_end >= handle.shape[1]:
+                col = 0
+                row = max_row_end
+            else:
+                col = col_end
+
+        handle.save_page()
+
+    with Tiff(OUT_FILE) as handle:
+        for pos, chunk in zip(positions, chunks):
+            row, row_end, col, col_end = pos
+            data = handle[row:row_end, col:col_end]
+            assert np.all(data == chunk)
+
+    with Tiff(OUT_FILE) as handle:
+        with pytest.raises(ValueError):
+            handle.new_page((50, 50), np.dtype("uint8"))
+            handle[:, :] = np.random.rand(50, 50)
+            handle.save_page()
+
+    subprocess.call(["rm", OUT_FILE])
+
+@settings(max_examples=MAX_SAMPLES, max_iterations=MAX_ITER)
+@given(data1=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500),
+       data2=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500),
+       data3=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500),
+       data4=random_matrix(dtype=np.uint8, min_row=100, max_row=500, min_col=100, max_col=500))
+def test_write_chunk_multiple_pages(data1, data2, data3, data4):
+    with Tiff(OUT_FILE, "w")as handle:
+        chunks = [data1, data2, data3, data4]
+
+        for c in chunks:
+            shape = c.shape
+            handle.new_page(shape, dtype=np.uint8, tile_length=16, tile_width=16)
+            handle[:] = c
+
+    with Tiff(OUT_FILE) as handle:
+        for page, chunk in enumerate(chunks):
+            handle.set_page(page)
+            data = handle[:]
+            assert data.shape == chunk.shape
+            assert np.all(data == chunk)
+
+    subprocess.call(["rm", OUT_FILE])

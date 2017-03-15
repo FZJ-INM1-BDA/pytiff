@@ -67,6 +67,7 @@ cdef unsigned int PLANARCONFIG = 284
 cdef unsigned int MIN_IS_BLACK = 1
 cdef unsigned int MIN_IS_WHITE = 0
 cdef unsigned int NO_COMPRESSION = 1
+cdef unsigned int IMAGE_DESCRIPTION = 270
 
 def tiff_version_raw():
   """Return the raw version string of libtiff."""
@@ -119,11 +120,12 @@ cdef class Tiff:
   cdef public short samples_per_pixel
   cdef short[:] n_bits_view
   cdef short sample_format, n_pages, extra_samples, _write_mode_n_pages
-  cdef bool closed, cached
+  cdef bool closed, cached, _unsaved_page
   cdef unsigned int image_width, image_length, tile_width, tile_length
   cdef object cache, logger
   cdef public object filename
   cdef object file_mode
+  cdef _dtype_write
 
   def __cinit__(self, filename, file_mode="r", bigtiff=False):
     if bigtiff:
@@ -139,6 +141,7 @@ cdef class Tiff:
     if self.tiff_handle is NULL:
       raise IOError("file not found!")
     self.closed = False
+    self._unsaved_page = False
 
     self.logger = logging.getLogger(_package)
     self.logger.debug("Tiff object created. file: {}".format(filename))
@@ -173,6 +176,16 @@ cdef class Tiff:
         self.extra_samples += 1
 
     self.cached = False
+
+  @property
+  def description(self):
+    """Returns the image description. If not available, returns None."""
+    cdef char* desc = ''
+    ctiff.TIFFGetField(self.tiff_handle, IMAGE_DESCRIPTION, &desc)
+    str = <string>desc
+    if str == "":
+      str = None
+    return str
 
   def close(self):
     """Close the filehandle."""
@@ -237,6 +250,8 @@ cdef class Tiff:
       If the mode is 'greyscale', the dtype is the type of the first sample.
       Since greyscale images only have one sample per pixel, this resembles the general dtype.
     """
+    if "a" in self.file_mode or "w" in self.file_mode:
+      return self._dtype_write.type
     if self.mode == "rgb":
       self.logger.debug("RGB Image assumed for dtype.")
       return np.uint8
@@ -376,8 +391,11 @@ cdef class Tiff:
 
     large = (end_y - start_y) * self.tile_length, (end_x - start_x) * self.tile_width, z_size
 
+    self.logger.debug("loading tiled, dtype: {}".format(self.dtype))
     cdef np.ndarray large_buf = np.zeros(large, dtype=self.dtype).squeeze()
     cdef np.ndarray arr_buf = np.zeros(shape, dtype=self.dtype).squeeze()
+    self.logger.debug("large_buf dtype: {}".format(large_buf.dtype))
+    self.logger.debug("arr_buf dtype: {}".format(arr_buf.dtype))
     cdef unsigned int np_x, np_y
     np_x = 0
     np_y = 0
@@ -426,6 +444,7 @@ cdef class Tiff:
     return res
 
   def __getitem__(self, index):
+    self.logger.debug("__getitem__ called")
     if not isinstance(index, tuple):
       if isinstance(index, slice):
         index = (index, slice(None,None,None))
@@ -480,7 +499,7 @@ cdef class Tiff:
     """
     if data.ndim > 2:
       raise NotImplementedError("Only grayscale image implemented.")
-    if self.file_mode not in ["w", "a"]:
+    if self.file_mode not in ["w", "a", "w8", "a8"]:
       raise Exception("Write is only supported in .. write mode ..")
 
     cdef short photometric, planar_config, compression
@@ -540,6 +559,131 @@ cdef class Tiff:
         row = data[i]
         ctiff.TIFFWriteScanline(self.tiff_handle, <void *>row.data, i, 0)
       ctiff.TIFFWriteDirectory(self.tiff_handle)
+
+  def new_page(self, image_size, dtype, **options):
+    """ adds a new page to the tiff file, and initializes chunk writing
+
+
+    Args:
+        image_size (array like (integer)): the size of the image
+        dytpe (np.dtype): the dtype of the image
+        photometric: determines how values are interpreted, either zero == black or zero == white.
+                     MIN_IS_BLACK(default), MIN_IS_WHITE. more information can be found in the libtiff doc.
+        planar_config: defaults to 1, component values for each pixel are stored contiguously.
+                      2 says components are stored in component planes. Irrelevant for greyscale images.
+        compression: compression level. defaults to no compression. More information can be found in the libtiff doc.
+        tile_length: sets the length of a tile. Must be a multiple of 16. Default: 256
+        tile_width: sets the width of a tile. Must be a multiple of 16. Default: 256
+    """
+    if self._unsaved_page:
+        self.save_page()
+    cdef short photometric, planar_config, compression
+    cdef short sample_format, nbits
+    cdef int length, width
+    photometric = options.get("photometric", MIN_IS_BLACK)
+    planar_config = options.get("planar_config", 1)
+    compression = options.get("compression", NO_COMPRESSION)
+
+    # cast to numpy.dtype. if this is not done, keys are not matching.
+    self._dtype_write = np.dtype(dtype)
+    dtype = np.dtype(dtype)
+    sample_format, nbits = INVERSE_TYPE_MAP[dtype]
+    length = image_size[0]
+    width = image_size[1]
+    self.image_length = image_size[0]
+    self.image_width = image_size[1]
+
+    cdef unsigned int tile_length, tile_width
+    tile_length = options.get("tile_length", 256)
+    tile_width = options.get("tile_width", 256)
+    self.tile_length = tile_length
+    self.tile_width = tile_width
+    ctiff.TIFFSetField(self.tiff_handle, TILELENGTH, tile_length)
+    ctiff.TIFFSetField(self.tiff_handle, TILEWIDTH, tile_width)
+
+    ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
+    ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
+    ctiff.TIFFSetField(self.tiff_handle, IMAGELENGTH, length)
+    ctiff.TIFFSetField(self.tiff_handle, IMAGEWIDTH, width)
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLE_FORMAT, sample_format)
+    ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
+    ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
+    ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
+    self._unsaved_page = True
+
+  def __setitem__(self, key, item):
+    """ enables chunkwise writing uses _chunk_writing """
+    self.logger.debug("__setitem__ called")
+    if not isinstance(key, tuple):
+      if isinstance(key, slice):
+        key = (key, slice(None,None,None))
+      else:
+        raise Exception("Only slicing is supported")
+    elif len(key) < 3:
+      key = key[0],key[1],0
+
+    if not isinstance(key[0], slice) or not isinstance(key[1], slice):
+      raise Exception("Only slicing is supported")
+
+    x_range = np.array((key[1].start, key[1].stop))
+    if x_range[0] is None:
+      x_range[0] = 0
+    if x_range[1] is None or x_range[1] > self.image_width:
+      x_range[1] = self.image_width
+
+    y_range = np.array((key[0].start, key[0].stop))
+    if y_range[0] is None:
+      y_range[0] = 0
+    if y_range[1] is None or y_range[1] > self.image_length:
+      y_range[1] = self.image_length
+
+    shape = y_range[1] - y_range[0], x_range[1] - x_range[0]
+    if shape != item.shape:
+      raise ValueError("data shape :{} is not matching to the slice: {}".format(item.shape, shape))
+    if self._dtype_write != np.dtype(item.dtype):
+        raise ValueError("data dtype :{} is not matching to the image dtype: {}".format(item.dtype, self.dtype))
+    self._write_chunk(item, x_pos=x_range[0], y_pos=y_range[0])
+
+  def _write_chunk(self, np.ndarray data, **options):
+    """ writes a chunk at the given position
+
+    Args:
+        data (np.ndarray): the chunk of the image
+        x_pos, y_pos (integer): sets the postiton where the chunk is written Default:0
+    """
+
+    x_chunk = options.get("x_pos",0)
+    y_chunk = options.get("y_pos",0)
+
+    cdef unsigned int tile_length, tile_width
+    tile_length = self.tile_length
+    tile_width = self.tile_width
+
+
+    cdef np.ndarray buffer
+    n_tile_rows = int(np.ceil(data.shape[0] / float(tile_length)))
+    n_tile_cols = int(np.ceil(data.shape[1] / float(tile_width)))
+
+    dtype = data.dtype
+    cdef unsigned int x, y
+    for i in range(n_tile_rows):
+      for j in range(n_tile_cols):
+        y = i * tile_length
+        x = j * tile_width
+        buffer = data[y:(i+1)*tile_length, x:(j+1)*tile_width]
+        buffer.astype(dtype)
+        buffer = np.pad(buffer, ((0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])), "constant", constant_values=(0))
+
+        ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x_chunk+x, y_chunk+y, 0, 0)
+
+
+  def save_page(self):
+    """ saves the page """
+    if self._unsaved_page:
+        self._unsaved_page = False
+        ctiff.TIFFWriteDirectory(self.tiff_handle)
+        self._write_mode_n_pages += 1
 
   cdef _read_tile(self, unsigned int y, unsigned int x):
     cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.n_samples),dtype=self.dtype).squeeze()

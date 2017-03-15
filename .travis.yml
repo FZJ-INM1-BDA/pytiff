@@ -24,5 +24,5 @@ install:
   - pip install cython
   - pip install numpy
   - pip install tifffile coveralls pytest-cov
-  - python setup.py build_ext --inplace --cov
+  - python setup.py build_ext --inplace
 script: py.test .
