@@ -16,7 +16,13 @@ doc: [![Documentation Status](https://readthedocs.org/projects/pytiff/badge/?ver
 
 ## Installation
 
-To install pytiff, clone the repo and call setup.py.
+Just use pip
+
+```bash
+pip install pytiff
+```
+
+or from sources: clone the repo and call setup.py.
 
 ```bash
 git clone https://github.com/FZJ-INM1-BDA/pytiff.git
