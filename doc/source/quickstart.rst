@@ -15,6 +15,14 @@ Requirements are listed in the requirements.tx:
 - cython
 - libtiff C library > 4.0
 
+Using pip:
+
+.. code:: bash
+
+  pip install pytiff
+
+Install from sources:
+
 .. code:: bash
 
   git clone https://github.com/FZJ-INM1-BDA/pytiff.git
