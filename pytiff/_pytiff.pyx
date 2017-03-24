@@ -235,7 +235,7 @@ cdef class Tiff:
   cdef unsigned int image_width, image_length, tile_width, tile_length
   cdef object cache, logger
   cdef public object filename
-  cdef object file_mode
+  cdef object file_mode, tags
   cdef _dtype_write
 
   def __cinit__(self, filename, file_mode="r", bigtiff=False):
