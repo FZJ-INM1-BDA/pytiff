@@ -50,7 +50,118 @@ INVERSE_TYPE_MAP = {
   np.dtype('float32'): (3, 32),
   np.dtype('float64'): (3, 64)
 }
-
+# map tiff_tags to attribute name and type
+# code: (attribute name, default value, type, count, validator)
+TIFF_TAGS = {
+    254: ('new_subfile_type', 0, 4, 1),
+    255: ('subfile_type', None, 3, 1),
+    256: ('image_width', None, 4, 1),
+    257: ('image_length', None, 4, 1),
+    258: ('bits_per_sample', 1, 3, None),
+    259: ('compression', 1, 3, 1),
+    262: ('photometric', None, 3, 1),
+    266: ('fill_order', 1, 3, 1),
+    269: ('document_name', None, 2, None),
+    270: ('image_description', None, 2, None),
+    271: ('make', None, 2, None),
+    272: ('model', None, 2, None),
+    273: ('strip_offsets', None, 4, None),
+    274: ('orientation', 1, 3, 1),
+    277: ('samples_per_pixel', 1, 3, 1),
+    278: ('rows_per_strip', 2**32-1, 4, 1),
+    279: ('strip_byte_counts', None, 4, None),
+    280: ('min_sample_value', None, 3, None),
+    281: ('max_sample_value', None, 3, None),  # 2**bits_per_sample
+    282: ('x_resolution', None, 5, 1),
+    283: ('y_resolution', None, 5, 1),
+    284: ('planar_configuration', 1, 3, 1),
+    285: ('page_name', None, 2, None),
+    286: ('x_position', None, 5, 1),
+    287: ('y_position', None, 5, 1),
+    296: ('resolution_unit', 2, 4, 1),
+    297: ('page_number', None, 3, 2),
+    305: ('software', None, 2, None),
+    306: ('datetime', None, 2, None),
+    315: ('artist', None, 2, None),
+    316: ('host_computer', None, 2, None),
+    317: ('predictor', 1, 3, 1),
+    318: ('white_point', None, 5, 2),
+    319: ('primary_chromaticities', None, 5, 6),
+    320: ('color_map', None, 3, None),
+    322: ('tile_width', None, 4, 1),
+    323: ('tile_length', None, 4, 1),
+    324: ('tile_offsets', None, 4, None),
+    325: ('tile_byte_counts', None, 4, None),
+    330: ('sub_ifds', None, 4, None),
+    338: ('extra_samples', None, 3, None),
+    339: ('sample_format', 1, 3, None),
+    340: ('smin_sample_value', None, None, None),
+    341: ('smax_sample_value', None, None, None),
+    346: ('indexed', 0, 3, 1),
+    347: ('jpeg_tables', None, 7, None),
+    530: ('ycbcr_subsampling', (1, 1), 3, 2),
+    531: ('ycbcr_positioning', (1, 1), 3, 1),
+    532: ('reference_black_white', None, 5, 1),
+    32995: ('sgi_matteing', None, None, 1),  # use extra_samples
+    32996: ('sgi_datatype', None, None, None),  # use sample_format
+    32997: ('image_depth', 1, 4, 1),
+    32998: ('tile_depth', None, 4, 1),
+    33432: ('copyright', None, 1, None),
+    33445: ('md_file_tag', None, 4, 1),
+    33446: ('md_scale_pixel', None, 5, 1),
+    33447: ('md_color_table', None, 3, None),
+    33448: ('md_lab_name', None, 2, None),
+    33449: ('md_sample_info', None, 2, None),
+    33450: ('md_prep_date', None, 2, None),
+    33451: ('md_prep_time', None, 2, None),
+    33452: ('md_file_units', None, 2, None),
+    33550: ('model_pixel_scale', None, 12, 3),
+    33922: ('model_tie_point', None, 12, None),
+    34665: ('exif_ifd', None, None, 1),
+    34735: ('geo_key_directory', None, 3, None),
+    34736: ('geo_double_params', None, 12, None),
+    34737: ('geo_ascii_params', None, 2, None),
+    34853: ('gps_ifd', None, None, 1),
+    37510: ('user_comment', None, None, None),
+    42112: ('gdal_metadata', None, 2, None),
+    42113: ('gdal_nodata', None, 2, None),
+    50289: ('mc_xy_position', None, 12, 2),
+    50290: ('mc_z_position', None, 12, 1),
+    50291: ('mc_xy_calibration', None, 12, 3),
+    50292: ('mc_lens_lem_na_n', None, 12, 3),
+    50293: ('mc_channel_name', None, 1, None),
+    50294: ('mc_ex_wavelength', None, 12, 1),
+    50295: ('mc_time_stamp', None, 12, 1),
+    50838: ('imagej_byte_counts', None, None, None),
+    51023: ('fibics_xml', None, 2, None),
+    65200: ('flex_xml', None, 2, None),
+    # code: (attribute name, default value, type, count, validator)
+}
+# the data types to the corresponding type in TIFF_TAGS
+TIFF_DATA_TYPES = {
+    1: np.dtype("uint8"),       # BYTE 8-bit unsigned integer.
+    2: np.dtype("uint64"),      # ASCII 8-bit byte that contains a 7-bit ASCII code;
+                                #   the last byte must be NULL (binary zero).
+    3: np.dtype("uint16"),      # SHORT 16-bit (2-byte) unsigned integer
+    4: np.dtype("uint32"),      # LONG 32-bit (4-byte) unsigned integer.
+    5: np.dtype("uint64"),      # RATIONAL Two LONGs: the first represents the numerator of
+                                #   a fraction; the second, the denominator.
+    6: np.dtype("int8"),        # SBYTE An 8-bit signed (twos-complement) integer.
+    7: np.dtype("uint8"),      # UNDEFINED An 8-bit byte that may contain anything,
+                                #   depending on the definition of the field.
+    8: np.dtype("int16"),       # SSHORT A 16-bit (2-byte) signed (twos-complement) integer.
+    9: np.dtype("int32"),       # SLONG A 32-bit (4-byte) signed (twos-complement) integer.
+    10: np.dtype("int64"),      # SRATIONAL Two SLONGs: the first represents the numerator
+                                #   of a fraction, the second the denominator.
+    11: np.dtype("float32"),    # FLOAT Single precision (4-byte) IEEE format.
+    12: np.dtype("float64"),    # DOUBLE Double precision (8-byte) IEEE format.
+    13: np.dtype("uint32"),     # IFD unsigned 4 byte IFD offset.
+    # 14: '',                   # UNICODE
+    # 15: '',                   # COMPLEX
+    16: np.dtype("uint64"),     # LONG8 unsigned 8 byte integer (BigTiff)
+    17: np.dtype("int64"),      # SLONG8 signed 8 byte integer (BigTiff)
+    18: np.dtype("uint64"),     # IFD8 unsigned 8 byte IFD offset (BigTiff)
+}
 cdef unsigned int SAMPLE_FORMAT = 339
 cdef unsigned int SAMPLES_PER_PIXEL = 277
 cdef unsigned int BITSPERSAMPLE = 258
@@ -676,6 +787,51 @@ cdef class Tiff:
         buffer = np.pad(buffer, ((0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])), "constant", constant_values=(0))
 
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x_chunk+x, y_chunk+y, 0, 0)
+
+  def read_tags(self):
+    """  reads the tags and saves them in a dictionary """
+    tags = {}
+    for key in TIFF_TAGS:
+      attribute_name, default_value, data_type, count = TIFF_TAGS[key]
+      if count is None:
+        count = 1
+      tags[attribute_name] =  self._read_tag(key, data_type, count)
+    self.tags = tags
+    return tags
+
+  def _read_tag(self, tag, data_type, count):
+    cdef np.ndarray data
+
+    if data_type is None:
+        return None
+    elif data_type == 2:
+        return self._read_ascii(tag)
+    elif data_type == 5:
+        data_type = np.dtype("uint32")
+        count *= 2
+        data = np.zeros(count, dtype=data_type)
+        ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
+        return data
+    elif data_type == 10:
+        data_type = np.dtype("int32")
+        count *= 2
+        data = np.zeros(count, dtype=data_type)
+        ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
+        return data
+    else:
+        data_type = TIFF_DATA_TYPES[data_type]
+        data = np.zeros(count, dtype=data_type)
+        ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
+        return data
+
+  def _read_ascii(self, tag):
+    cdef char* desc = ''
+    ctiff.TIFFGetField(self.tiff_handle, tag, &desc)
+    str = <string>desc
+    if str == "":
+      str = None
+    return str
+
 
 
   def save_page(self):
