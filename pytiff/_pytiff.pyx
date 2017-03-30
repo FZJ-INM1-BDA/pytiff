@@ -236,7 +236,7 @@ cdef class Tiff:
   cdef object cache, logger
   cdef public object filename
   cdef object file_mode
-  cdef object tags
+  cdef public object tags
   cdef _dtype_write
 
   def __cinit__(self, filename, file_mode="r", bigtiff=False):
