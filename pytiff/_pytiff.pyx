@@ -235,7 +235,8 @@ cdef class Tiff:
   cdef unsigned int image_width, image_length, tile_width, tile_length
   cdef object cache, logger
   cdef public object filename
-  cdef object file_mode, tags
+  cdef object file_mode
+  cdef object tags
   cdef _dtype_write
 
   def __cinit__(self, filename, file_mode="r", bigtiff=False):
@@ -790,6 +791,8 @@ cdef class Tiff:
 
   def read_tags(self):
     """  reads the tags and saves them in a dictionary """
+    if self.file_mode != "r":
+        raise Exception("Tag reading is only supported in read mode"
     tags = {}
     for key in TIFF_TAGS:
       attribute_name, default_value, data_type, count = TIFF_TAGS[key]
