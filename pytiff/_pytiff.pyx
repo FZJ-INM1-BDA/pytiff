@@ -795,10 +795,11 @@ cdef class Tiff:
         raise Exception("Tag reading is only supported in read mode")
     tags = {}
     for key in TIFF_TAGS:
-      attribute_name, default_value, data_type, count = TIFF_TAGS[key]
-      if count is None:
-        count = 1
-      tags[attribute_name] =  self._read_tag(key, data_type, count)
+      if key != 297:  # as long as the problem with tag 297 persists
+          attribute_name, default_value, data_type, count = TIFF_TAGS[key]
+          if count is None:
+            count = 1
+          tags[attribute_name] = self._read_tag(key, data_type, count)
     self.tags = tags
     return tags
 
