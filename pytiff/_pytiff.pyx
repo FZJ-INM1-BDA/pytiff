@@ -137,6 +137,92 @@ TIFF_TAGS = {
     65200: ('flex_xml', None, 2, None),
     # code: (attribute name, default value, type, count, validator)
 }
+# attribute_name: tag
+TIFF_TAGS_REVERSE = {
+    'new_subfile_type':           254,
+    'subfile_type':               255,
+    'image_width':                256,
+    'image_length':               257,
+    'bits_per_sample':            258,
+    'compression':                259,
+    'photometric':                262,
+    'fill_order':                 266,
+    'document_name':              269,
+    'image_description':          270,
+    'make':                       271,
+    'model':                      272,
+    'strip_offsets':              273,
+    'orientation':                274,
+    'samples_per_pixel':          277,
+    'rows_per_strip':             278,
+    'strip_byte_counts':          279,
+    'min_sample_value':           280,
+    'max_sample_value':           281,
+    'x_resolution':               282,
+    'y_resolution':               283,
+    'planar_configuration':       284,
+    'page_name':                  285,
+    'x_position':                 286,
+    'y_position':                 287,
+    'resolution_unit':            296,
+    'page_number':                297,
+    'software':                   305,
+    'datetime':                   306,
+    'artist':                     315,
+    'host_computer':              316,
+    'predictor':                  317,
+    'white_point':                318,
+    'primary_chromaticities':     319,
+    'color_map':                  320,
+    'tile_width':                 322,
+    'tile_length':                323,
+    'tile_offsets':               324,
+    'tile_byte_counts':           325,
+    'sub_ifds':                   330,
+    'extra_samples':              338,
+    'sample_format':              339,
+    'smin_sample_value':          340,
+    'smax_sample_value':          341,
+    'indexed':                    346,
+    'jpeg_tables':                347,
+    'ycbcr_subsampling':          530,
+    'ycbcr_positioning':          531,
+    'reference_black_white':      532,
+    'sgi_matteing':             32995,
+    'sgi_datatype':             32996,
+    'image_depth':              32997,
+    'tile_depth':               32998,
+    'copyright':                33432,
+    'md_file_tag':              33445,
+    'md_scale_pixel':           33446,
+    'md_color_table':           33447,
+    'md_lab_name':              33448,
+    'md_sample_info':           33449,
+    'md_prep_date':             33450,
+    'md_prep_time':             33451,
+    'md_file_units':            33452,
+    'model_pixel_scale':        33550,
+    'model_tie_point':          33922,
+    'exif_ifd':                 34665,
+    'geo_key_directory':        34735,
+    'geo_double_params':        34736,
+    'geo_ascii_params':         34737,
+    'gps_ifd':                  34853,
+    'user_comment':             37510,
+    'gdal_metadata':            42112,
+    'gdal_nodata':              42113,
+    'mc_xy_position':           50289,
+    'mc_z_position':            50290,
+    'mc_xy_calibration':        50291,
+    'mc_lens_lem_na_n':         50292,
+    'mc_channel_name':          50293,
+    'mc_ex_wavelength':         50294,
+    'mc_time_stamp':            50295,
+    'imagej_byte_counts':       50838,
+    'fibics_xml':               51023,
+    'flex_xml':                 65200,
+    # code: (attribute name, default value, type, count, validator)
+}
 # the data types to the corresponding type in TIFF_TAGS
 TIFF_DATA_TYPES = {
     1: np.dtype("uint8"),       # BYTE 8-bit unsigned integer.
@@ -836,7 +922,24 @@ cdef class Tiff:
       str = None
     return str
 
+  def set_tags(self, tag=None, value=None, dict=None):
+    cdef np.ndarray data
 
+    if dict is not None:
+        for key in dict:
+          if type(key) == int:
+            tag = key
+          else:
+            tag = TIFF_TAGS_REVERSE[key]
+          data = dict[key]
+          ctiff.TIFFSetField(self.file_handle, tag, data)
+    elif tag is not None:
+      if type(tag) == int:
+        tag = tag
+      else:
+        tag = TIFF_TAGS_REVERSE[tag]
+      data = value
+      ctiff.TIFFSetField(self.file_handle, tag, data)
 
   def save_page(self):
     """ saves the page """
