@@ -876,7 +876,11 @@ cdef class Tiff:
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x_chunk+x, y_chunk+y, 0, 0)
 
   def read_tags(self):
-    """  reads the tags and saves them in a dictionary """
+    """  reads the tags and saves them in a dictionary
+
+        Returns
+            the tags (dictionary) (they are also saved as an attribute of the pyTiff Object)
+    """
     if self.file_mode != "r":
         raise Exception("Tag reading is only supported in read mode")
     tags = {}
@@ -890,6 +894,15 @@ cdef class Tiff:
     return tags
 
   def _read_tag(self, tag, data_type, count):
+    """ reads a single attribute from a Tiff File
+
+        Args:
+            tag (integer): the attribute tag
+            data_type (integer): the key for the numpy data type specified in TIFF_DATA_TYPES
+            count (integer): length of the attribute
+        Returns:
+            the attribute (either a string or a numpy array of length count)
+    """
     cdef np.ndarray data
 
     if data_type is None:
@@ -915,6 +928,14 @@ cdef class Tiff:
         return data
 
   def _read_ascii(self, tag):
+    """ reads an ascii string from a Tiff File
+
+        Args:
+            tag (integer): the attribute tag
+
+        Returns:
+            the attribute (string)
+    """
     cdef char* desc = ''
     ctiff.TIFFGetField(self.tiff_handle, tag, &desc)
     str = <string>desc
@@ -923,6 +944,16 @@ cdef class Tiff:
     return str
 
   def set_tags(self, tag=None, value=None, dict=None):
+    """ writes the tags in the dict to the Tiff File or writes one tag value pair to the Tiff File
+
+        Args:
+            tag (integer/string): either a tag or an attribute name
+            value: the value which should be written to the Tiff File
+
+            dict (dictionary): consists of tag/value pairs, where
+                tag (integer/string): either a tag or an attribute name
+                value: the value which should be written to the Tiff File
+    """
     cdef np.ndarray data
 
     if dict is not None:
