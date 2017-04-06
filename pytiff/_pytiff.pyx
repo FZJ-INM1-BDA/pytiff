@@ -956,6 +956,9 @@ cdef class Tiff:
     """
     cdef np.ndarray data
 
+    if self.file_mode == "r":
+        raise Exception("Tag writing is not supported in read mode")
+
     if dict is not None:
         for key in dict:
           if type(key) == int:
