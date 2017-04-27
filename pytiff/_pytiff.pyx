@@ -945,45 +945,42 @@ cdef class Tiff:
       str = None
     return str
 
-  def set_tags(self, tag=None, value=None, dict=None):
-    """ writes the tags in the dict to the Tiff File or writes one tag value pair to the Tiff File
+  def set_tags(self, **kwargs):
+    """ writes the tag/value pairs in the dict to the Tiff File
 
         Args:
-            tag (integer/string): either a tag or an attribute name
-            value: the value which should be written to the Tiff File
-
-            dict (dictionary): consists of tag/value pairs, where
+            kwargs (dictionary): consists of tag/value pairs, where
                 tag (integer/string): either a tag or an attribute name
                 value: the value which should be written to the Tiff File
     """
-    cdef np.ndarray data
-
     if self.file_mode == "r":
         raise Exception("Tag writing is not supported in read mode")
 
-    if dict is not None:
-        for key in dict:
-          if type(key) == int:
-            tag = key
-          else:
-            tag = TIFF_TAGS_REVERSE[key]
-          data = np.array([dict[key]])
-          ctiff.TIFFSetField(self.tiff_handle, tag, <void *> data.data)
+    for key in kwargs:
+      self._set_tag(key, kwargs[key])
 
-    elif tag is not None:
-      if type(tag) == int:
-        tag = tag
-      else:
+  def _set_tag(self, tag, value):
+    """  sets one tag in the tiff file
+
+
+        Args:
+            tag (integer/string): either a tag or attribute name
+            value: the value which should be written to the Tiff File
+    """
+    cdef np.ndarray data
+    if type(tag) == int:
+      tag = tag
+    else:
         tag = TIFF_TAGS_REVERSE[tag]
-      if isinstance(value, str):
-        if PY3:
-            data = np.array([value.encode()])
-        else:
-            data = np.array([value])
+    if isinstance(value, str):
+      if PY3:
+         data = np.array([value.encode()])
       else:
-        data = value
-      assert isinstance(data, np.ndarray)
-      ctiff.TIFFSetField(self.tiff_handle, tag, <void *> data.data)
+         data = np.array([value])
+    else:
+      data = value
+    assert isinstance(data, np.ndarray)
+    ctiff.TIFFSetField(self.tiff_handle, tag, <void *> data.data)
 
   def save_page(self):
     """ saves the page """
