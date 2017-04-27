@@ -965,15 +965,16 @@ cdef class Tiff:
             tag = key
           else:
             tag = TIFF_TAGS_REVERSE[key]
-          data = dict[key]
-          ctiff.TIFFSetField(self.tiff_handle, tag, <void*> data.data)
+          data = np.array([dict[key]])
+          ctiff.TIFFSetField(self.tiff_handle, tag, <void *> data.data)
+
     elif tag is not None:
       if type(tag) == int:
         tag = tag
       else:
         tag = TIFF_TAGS_REVERSE[tag]
-      data = value
-      ctiff.TIFFSetField(self.tiff_handle, tag, <void*> data.data)
+      data = np.array([value])
+      ctiff.TIFFSetField(self.tiff_handle, tag, <void *> data.data)
 
   def save_page(self):
     """ saves the page """
