@@ -14,6 +14,8 @@ import numpy as np
 from math import ceil
 import re
 from pytiff._version import _package
+import sys
+PY3 = sys.version_info[0] == 3
 
 TYPE_MAP = {
   1: {
@@ -973,7 +975,14 @@ cdef class Tiff:
         tag = tag
       else:
         tag = TIFF_TAGS_REVERSE[tag]
-      data = np.array([value])
+      if isinstance(value, str):
+        if PY3:
+            data = np.array([value.encode()])
+        else:
+            data = np.array([value])
+      else:
+        data = value
+      assert isinstance(data, np.ndarray)
       ctiff.TIFFSetField(self.tiff_handle, tag, <void *> data.data)
 
   def save_page(self):
