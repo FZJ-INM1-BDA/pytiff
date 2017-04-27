@@ -952,6 +952,10 @@ cdef class Tiff:
             kwargs (dictionary): consists of tag/value pairs, where
                 tag (integer/string): either a tag or an attribute name
                 value: the value which should be written to the Tiff File
+
+        Example Usage:
+            tiff_file.set_tags(**{"artist": "John Doe"})
+            tiff_file.write(arary)
     """
     if self.file_mode == "r":
         raise Exception("Tag writing is not supported in read mode")
