@@ -380,12 +380,7 @@ cdef class Tiff:
   @property
   def description(self):
     """Returns the image description. If not available, returns None."""
-    cdef char* desc = ''
-    ctiff.TIFFGetField(self.tiff_handle, IMAGE_DESCRIPTION, &desc)
-    str = <string>desc
-    if str == "":
-      str = None
-    return str
+    return self.tags["image_description"]
 
   def close(self):
     """Close the filehandle."""
@@ -977,6 +972,7 @@ cdef class Tiff:
     else:
         tag = TIFF_TAGS_REVERSE[tag]
     if isinstance(value, str):
+      value = value + "\0"
       if PY3:
          data = np.array([value.encode()])
       else:
