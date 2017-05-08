@@ -66,6 +66,7 @@ cdef unsigned int PHOTOMETRIC = 262
 cdef unsigned int PLANARCONFIG = 284
 cdef unsigned int MIN_IS_BLACK = 1
 cdef unsigned int MIN_IS_WHITE = 0
+cdef unsigned int RGB = 2
 cdef unsigned int NO_COMPRESSION = 1
 cdef unsigned int IMAGE_DESCRIPTION = 270
 
@@ -477,7 +478,7 @@ cdef class Tiff:
     """Write data to the tif file.
 
     If the file is opened in write mode, a numpy array can be written to a
-    tiff page. Currently RGB images are not supported.
+    tiff page.
     Multipage tiffs are supperted by calling write multiple times.
 
     Args:
@@ -497,21 +498,25 @@ cdef class Tiff:
       >>> with pytiff.Tiff("example.tif", "w") as handle:
       >>>   handle.write(data, method="tile", tile_length=240, tile_width=240)
     """
-    if data.ndim > 2:
-      raise NotImplementedError("Only grayscale image implemented.")
     if self.file_mode not in ["w", "a", "w8", "a8"]:
       raise Exception("Write is only supported in .. write mode ..")
 
     cdef short photometric, planar_config, compression
-    cdef short sample_format, nbits
+    cdef short sample_format, nbits, samples_per_pixel
+
     photometric = options.get("photometric", MIN_IS_BLACK)
+    if data.ndim == 3:
+        photometric = RGB
+
     planar_config = options.get("planar_config", 1)
     compression = options.get("compression", NO_COMPRESSION)
-
+    samples_per_pixel = 1
+    if data.ndim == 3:
+        samples_per_pixel = data.shape[2]
     sample_format, nbits = INVERSE_TYPE_MAP[data.dtype]
 
     ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
-    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, samples_per_pixel)
     ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
     ctiff.TIFFSetField(self.tiff_handle, IMAGELENGTH, data.shape[0])
     ctiff.TIFFSetField(self.tiff_handle, IMAGEWIDTH, data.shape[1])
@@ -546,7 +551,10 @@ cdef class Tiff:
         y = i * tile_length
         x = j * tile_width
         buffer = data[y:(i+1)*tile_length, x:(j+1)*tile_width]
-        buffer = np.pad(buffer, ((0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])), "constant", constant_values=(0))
+        to_pad = [(0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])]
+        if data.ndim ==3:
+            to_pad += [(0,0)]
+        buffer = np.pad(buffer, to_pad, "constant", constant_values=(0))
 
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x, y, 0, 0)
 

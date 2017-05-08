@@ -1,13 +1,12 @@
-from pytiff import *
-import pytest
-import tifffile
-import numpy as np
-import subprocess
-
-from hypothesis import given, settings
-import hypothesis.strategies as st
-from hypothesis.extra.numpy import arrays
 from hypothesis import HealthCheck
+from hypothesis import given, settings
+from hypothesis.extra.numpy import arrays
+from pytiff import *
+import hypothesis.strategies as st
+import numpy as np
+import pytest
+import subprocess
+import tifffile
 
 TILED_GREY = "test_data/small_example_tiled.tif"
 NOT_TILED_GREY = "test_data/small_example.tif"

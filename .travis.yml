@@ -23,6 +23,7 @@ install:
   - pip install --upgrade pytest hypothesis
   - pip install cython
   - pip install numpy
+  - pip install scikit-image
   - pip install tifffile coveralls pytest-cov
   - python setup.py build_ext --inplace
 script: py.test .
