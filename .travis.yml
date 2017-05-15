@@ -25,5 +25,5 @@ install:
   - pip install numpy
   - pip install scikit-image
   - pip install tifffile coveralls pytest-cov
-  - python setup.py build_ext --inplace
-script: py.test .
+  - python setup.py build_ext --inplace --force --define CYTHON_TRACE
+script: py.test -v --cov=pytiff pytiff

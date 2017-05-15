@@ -2,5 +2,3 @@
 plugins = Cython.Coverage
 omit =
       */test/*
-      */build/*
-      */__init__.py

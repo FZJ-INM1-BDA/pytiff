@@ -27,7 +27,7 @@ extensions = [
     )]
 
 if use_cython:
-    extensions = cythonize(extensions)
+    extensions = cythonize(extensions, compiler_directives={'linetrace': True})
 
 setup(
     ext_modules = extensions,

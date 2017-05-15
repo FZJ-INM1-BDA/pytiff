@@ -51,24 +51,25 @@ INVERSE_TYPE_MAP = {
   np.dtype('float64'): (3, 64)
 }
 
-cdef unsigned int SAMPLE_FORMAT = 339
-cdef unsigned int SAMPLES_PER_PIXEL = 277
 cdef unsigned int BITSPERSAMPLE = 258
-cdef unsigned int IMAGEWIDTH = 256
-cdef unsigned int IMAGELENGTH = 257
-cdef unsigned int TILEWIDTH = 322
-cdef unsigned int TILELENGTH = 323
-cdef unsigned int EXTRA_SAMPLES = 338
-cdef unsigned int TILE_LENGTH = 323
-cdef unsigned int TILE_WIDTH =322
 cdef unsigned int COMPRESSION = 259
-cdef unsigned int PHOTOMETRIC = 262
-cdef unsigned int PLANARCONFIG = 284
+cdef unsigned int EXTRA_SAMPLES = 338
+cdef unsigned int IMAGELENGTH = 257
+cdef unsigned int IMAGEWIDTH = 256
+cdef unsigned int IMAGE_DESCRIPTION = 270
 cdef unsigned int MIN_IS_BLACK = 1
 cdef unsigned int MIN_IS_WHITE = 0
-cdef unsigned int RGB = 2
 cdef unsigned int NO_COMPRESSION = 1
-cdef unsigned int IMAGE_DESCRIPTION = 270
+cdef unsigned int PHOTOMETRIC = 262
+cdef unsigned int PLANARCONFIG = 284
+cdef unsigned int RGB = 2
+cdef unsigned int ROWSPERSTRIP = 278
+cdef unsigned int SAMPLES_PER_PIXEL = 277
+cdef unsigned int SAMPLE_FORMAT = 339
+cdef unsigned int TILELENGTH = 323
+cdef unsigned int TILEWIDTH = 322
+cdef unsigned int TILE_LENGTH = 323
+cdef unsigned int TILE_WIDTH =322
 
 def tiff_version_raw():
   """Return the raw version string of libtiff."""
@@ -601,7 +602,7 @@ cdef class Tiff:
     self.image_length = image_size[0]
     self.image_width = image_size[1]
 
-    cdef unsigned int tile_length, tile_width
+    cdef short tile_length, tile_width
     tile_length = options.get("tile_length", 256)
     tile_width = options.get("tile_width", 256)
     self.tile_length = tile_length
