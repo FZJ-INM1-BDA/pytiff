@@ -71,8 +71,6 @@ def test_rgb_not_tiled():
         for page in tif:
             first_page = page.asarray()
             break
-        alpha = np.ones_like(first_page[:,:,0]) * 255
-        first_page = np.dstack((first_page, alpha))
 
     with Tiff(NOT_TILED_RGB) as tif:
         assert not tif.is_tiled()

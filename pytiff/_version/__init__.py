@@ -14,7 +14,7 @@ __all__ = [
 
 VERSION_MAJOR = 0
 VERSION_MINOR = 6
-VERSION_PATCH = 1
+VERSION_PATCH = 2
 
 VERSION_STRING = "{major}.{minor}.{patch}".format(major=VERSION_MAJOR, minor=VERSION_MINOR, patch=VERSION_PATCH)
 
