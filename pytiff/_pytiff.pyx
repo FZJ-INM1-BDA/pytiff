@@ -226,7 +226,11 @@ cdef class Tiff:
       This is equal to:
       `(number_of_rows, number_of_columns)`
     """
-    return self.image_length, self.image_width
+    size = self.image_length, self.image_width
+
+    if self.mode == "rgb":
+        size += (4,)
+    return size
 
   @property
   def shape(self):
@@ -354,7 +358,7 @@ cdef class Tiff:
     """Loads an image at once. Returns an RGBA image."""
     self.logger.debug("Loading a whole rgba image.")
     cdef np.ndarray buffer
-    shape = self.size
+    shape = self.size[:2]
     buffer = np.zeros(shape, dtype=np.uint32)
     ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
     rgb = _get_rgb(buffer)

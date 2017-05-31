@@ -122,16 +122,22 @@ def test_multi_page():
         assert tif.current_page == 3
         for i in range(N_PAGES):
             tif.set_page(i)
-            assert tif.size == SIZE[i]
+            assert tif.size[:2] == SIZE[i]
             assert tif.mode == MODE[i]
             assert tif.dtype == TYPE[i]
 
 def test_generator_multi_page():
     with Tiff(MULTI_PAGE) as tif:
         for i, page in enumerate(tif):
-            assert page.size == SIZE[i]
+            assert page.size[:2] == SIZE[i]
             assert page.mode == MODE[i]
             assert page.dtype == TYPE[i]
+
+def test_shape():
+    with Tiff(TILED_GREY) as tif:
+        assert len(tif.shape) == 2
+    with Tiff(TILED_RGB) as tif:
+        assert len(tif.shape) == 3
 
 def read_methods(filename):
     with tifffile.TiffFile(filename) as tif:
