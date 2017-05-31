@@ -85,8 +85,8 @@ class NotTiledError(Exception):
   def __init__(self, message):
     self.message = message
 
-cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp):
-  shape = (inp.shape[0], inp.shape[1], 4)
+cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp, short n_samples):
+  shape = (inp.shape[0], inp.shape[1], n_samples)
   cdef np.ndarray[np.uint8_t, ndim=3] rgb = np.zeros(shape, np.uint8)
 
   cdef unsigned long int row, col
@@ -95,7 +95,9 @@ cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp):
       rgb[row, col, 0] = ctiff.TIFFGetR(inp[row, col])
       rgb[row, col, 1] = ctiff.TIFFGetG(inp[row, col])
       rgb[row, col, 2] = ctiff.TIFFGetB(inp[row, col])
-      rgb[row, col, 3] = ctiff.TIFFGetA(inp[row, col])
+      # add alpha channel if more than 3 samples
+      if n_samples > 3:
+        rgb[row, col, 3] = ctiff.TIFFGetA(inp[row, col])
 
   return rgb
 
@@ -228,8 +230,8 @@ cdef class Tiff:
     """
     size = self.image_length, self.image_width
 
-    if self.mode == "rgb":
-        size += (4,)
+    if self.samples_per_pixel > 1:
+        size += (self.samples_per_pixel,)
     return size
 
   @property
@@ -361,7 +363,7 @@ cdef class Tiff:
     shape = self.size[:2]
     buffer = np.zeros(shape, dtype=np.uint32)
     ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
-    rgb = _get_rgb(buffer)
+    rgb = _get_rgb(buffer, self.samples_per_pixel)
     rgb = np.flipud(rgb)
     return rgb
 
