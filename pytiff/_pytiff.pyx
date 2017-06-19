@@ -52,6 +52,7 @@ INVERSE_TYPE_MAP = {
   np.dtype('float32'): (3, 32),
   np.dtype('float64'): (3, 64)
 }
+
 # map tiff_tags to attribute name and type
 # code: (attribute name, default value, type, count, validator)
 TIFF_TAGS = {
@@ -139,6 +140,7 @@ TIFF_TAGS = {
     65200: ('flex_xml', None, 2, None),
     # code: (attribute name, default value, type, count, validator)
 }
+
 # attribute_name: tag
 TIFF_TAGS_REVERSE = {
     'new_subfile_type':           254,
@@ -225,6 +227,7 @@ TIFF_TAGS_REVERSE = {
     'flex_xml':                 65200,
     # code: (attribute name, default value, type, count, validator)
 }
+
 # the data types to the corresponding type in TIFF_TAGS
 TIFF_DATA_TYPES = {
     1: np.dtype("uint8"),       # BYTE 8-bit unsigned integer.
@@ -250,23 +253,26 @@ TIFF_DATA_TYPES = {
     17: np.dtype("int64"),      # SLONG8 signed 8 byte integer (BigTiff)
     18: np.dtype("uint64"),     # IFD8 unsigned 8 byte IFD offset (BigTiff)
 }
-cdef unsigned int SAMPLE_FORMAT = 339
-cdef unsigned int SAMPLES_PER_PIXEL = 277
+
 cdef unsigned int BITSPERSAMPLE = 258
-cdef unsigned int IMAGEWIDTH = 256
-cdef unsigned int IMAGELENGTH = 257
-cdef unsigned int TILEWIDTH = 322
-cdef unsigned int TILELENGTH = 323
-cdef unsigned int EXTRA_SAMPLES = 338
-cdef unsigned int TILE_LENGTH = 323
-cdef unsigned int TILE_WIDTH =322
 cdef unsigned int COMPRESSION = 259
-cdef unsigned int PHOTOMETRIC = 262
-cdef unsigned int PLANARCONFIG = 284
+cdef unsigned int EXTRA_SAMPLES = 338
+cdef unsigned int IMAGELENGTH = 257
+cdef unsigned int IMAGEWIDTH = 256
+cdef unsigned int IMAGE_DESCRIPTION = 270
 cdef unsigned int MIN_IS_BLACK = 1
 cdef unsigned int MIN_IS_WHITE = 0
 cdef unsigned int NO_COMPRESSION = 1
-cdef unsigned int IMAGE_DESCRIPTION = 270
+cdef unsigned int PHOTOMETRIC = 262
+cdef unsigned int PLANARCONFIG = 284
+cdef unsigned int RGB = 2
+cdef unsigned int ROWSPERSTRIP = 278
+cdef unsigned int SAMPLES_PER_PIXEL = 277
+cdef unsigned int SAMPLE_FORMAT = 339
+cdef unsigned int TILELENGTH = 323
+cdef unsigned int TILEWIDTH = 322
+cdef unsigned int TILE_LENGTH = 323
+cdef unsigned int TILE_WIDTH =322
 
 def tiff_version_raw():
   """Return the raw version string of libtiff."""
@@ -282,8 +288,8 @@ class NotTiledError(Exception):
   def __init__(self, message):
     self.message = message
 
-cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp):
-  shape = (inp.shape[0], inp.shape[1], 4)
+cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp, short n_samples):
+  shape = (inp.shape[0], inp.shape[1], n_samples)
   cdef np.ndarray[np.uint8_t, ndim=3] rgb = np.zeros(shape, np.uint8)
 
   cdef unsigned long int row, col
@@ -292,7 +298,9 @@ cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp):
       rgb[row, col, 0] = ctiff.TIFFGetR(inp[row, col])
       rgb[row, col, 1] = ctiff.TIFFGetG(inp[row, col])
       rgb[row, col, 2] = ctiff.TIFFGetB(inp[row, col])
-      rgb[row, col, 3] = ctiff.TIFFGetA(inp[row, col])
+      # add alpha channel if more than 3 samples
+      if n_samples > 3:
+        rgb[row, col, 3] = ctiff.TIFFGetA(inp[row, col])
 
   return rgb
 
@@ -419,7 +427,11 @@ cdef class Tiff:
       This is equal to:
       `(number_of_rows, number_of_columns)`
     """
-    return self.image_length, self.image_width
+    size = self.image_length, self.image_width
+
+    if self.samples_per_pixel > 1:
+        size += (self.samples_per_pixel,)
+    return size
 
   @property
   def shape(self):
@@ -547,10 +559,10 @@ cdef class Tiff:
     """Loads an image at once. Returns an RGBA image."""
     self.logger.debug("Loading a whole rgba image.")
     cdef np.ndarray buffer
-    shape = self.size
+    shape = self.size[:2]
     buffer = np.zeros(shape, dtype=np.uint32)
     ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
-    rgb = _get_rgb(buffer)
+    rgb = _get_rgb(buffer, self.samples_per_pixel)
     rgb = np.flipud(rgb)
     return rgb
 
@@ -672,7 +684,7 @@ cdef class Tiff:
     """Write data to the tif file.
 
     If the file is opened in write mode, a numpy array can be written to a
-    tiff page. Currently RGB images are not supported.
+    tiff page.
     Multipage tiffs are supperted by calling write multiple times.
 
     Args:
@@ -692,21 +704,25 @@ cdef class Tiff:
       >>> with pytiff.Tiff("example.tif", "w") as handle:
       >>>   handle.write(data, method="tile", tile_length=240, tile_width=240)
     """
-    if data.ndim > 2:
-      raise NotImplementedError("Only grayscale image implemented.")
     if self.file_mode not in ["w", "a", "w8", "a8"]:
       raise Exception("Write is only supported in .. write mode ..")
 
     cdef short photometric, planar_config, compression
-    cdef short sample_format, nbits
+    cdef short sample_format, nbits, samples_per_pixel
+
     photometric = options.get("photometric", MIN_IS_BLACK)
+    if data.ndim == 3:
+        photometric = RGB
+
     planar_config = options.get("planar_config", 1)
     compression = options.get("compression", NO_COMPRESSION)
-
+    samples_per_pixel = 1
+    if data.ndim == 3:
+        samples_per_pixel = data.shape[2]
     sample_format, nbits = INVERSE_TYPE_MAP[data.dtype]
 
     ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
-    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
+    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, samples_per_pixel)
     ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
     ctiff.TIFFSetField(self.tiff_handle, IMAGELENGTH, data.shape[0])
     ctiff.TIFFSetField(self.tiff_handle, IMAGEWIDTH, data.shape[1])
@@ -741,7 +757,10 @@ cdef class Tiff:
         y = i * tile_length
         x = j * tile_width
         buffer = data[y:(i+1)*tile_length, x:(j+1)*tile_width]
-        buffer = np.pad(buffer, ((0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])), "constant", constant_values=(0))
+        to_pad = [(0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])]
+        if data.ndim ==3:
+            to_pad += [(0,0)]
+        buffer = np.pad(buffer, to_pad, "constant", constant_values=(0))
 
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x, y, 0, 0)
 
@@ -788,7 +807,7 @@ cdef class Tiff:
     self.image_length = image_size[0]
     self.image_width = image_size[1]
 
-    cdef unsigned int tile_length, tile_width
+    cdef short tile_length, tile_width
     tile_length = options.get("tile_length", 256)
     tile_width = options.get("tile_width", 256)
     self.tile_length = tile_length

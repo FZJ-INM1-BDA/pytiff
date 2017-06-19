@@ -6,6 +6,7 @@ The libtiff library is wrapped using the Cython package.
 
 develop : [![Build Status](https://travis-ci.org/FZJ-INM1-BDA/pytiff.svg?branch=develop)](https://travis-ci.org/FZJ-INM1-BDA/pytiff)
 master: [![Build Status](https://travis-ci.org/FZJ-INM1-BDA/pytiff.svg?branch=master)](https://travis-ci.org/FZJ-INM1-BDA/pytiff)
+coverage: [![Coverage Status](https://coveralls.io/repos/github/FZJ-INM1-BDA/pytiff/badge.svg)](https://coveralls.io/github/FZJ-INM1-BDA/pytiff)
 doc: [![Documentation Status](https://readthedocs.org/projects/pytiff/badge/?version=latest)](http://pytiff.readthedocs.io/en/latest/?badge=latest)
 
 ## Dependencies

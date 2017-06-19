@@ -23,6 +23,8 @@ install:
   - pip install --upgrade pytest hypothesis
   - pip install cython
   - pip install numpy
-  - pip install tifffile coveralls pytest-cov
-  - python setup.py build_ext --inplace
-script: py.test .
+  - pip install scikit-image
+  - pip install tifffile coveralls pytest-cov coveralls
+  - python setup.py build_ext --inplace --force --define CYTHON_TRACE
+script: py.test -v --cov=pytiff --cov-report=xml pytiff
+after_success: coveralls
