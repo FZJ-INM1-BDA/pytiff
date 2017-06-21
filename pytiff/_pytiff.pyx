@@ -15,6 +15,7 @@ from math import ceil
 import re
 from pytiff._version import _package
 import sys
+import copy
 PY3 = sys.version_info[0] == 3
 
 TYPE_MAP = {
@@ -68,15 +69,15 @@ TIFF_TAGS = {
     270: ('image_description', None, 2, None),
     271: ('make', None, 2, None),
     272: ('model', None, 2, None),
-    273: ('strip_offsets', None, 4, None),
+    273: ('strip_offsets', None, 16, None),
     274: ('orientation', 1, 3, 1),
     277: ('samples_per_pixel', 1, 3, 1),
     278: ('rows_per_strip', 2**32-1, 4, 1),
-    279: ('strip_byte_counts', None, 4, None),
+    279: ('strip_byte_counts', None, 16, None),
     280: ('min_sample_value', None, 3, None),
     281: ('max_sample_value', None, 3, None),  # 2**bits_per_sample
-    282: ('x_resolution', None, 5, 1),
-    283: ('y_resolution', None, 5, 1),
+    282: ('x_resolution', None, 11, 1), # change from type 5 (rational) to float
+    283: ('y_resolution', None, 11, 1),  # change from type 5 (rational) to float
     284: ('planar_configuration', 1, 3, 1),
     285: ('page_name', None, 2, None),
     286: ('x_position', None, 5, 1),
@@ -90,52 +91,52 @@ TIFF_TAGS = {
     317: ('predictor', 1, 3, 1),
     318: ('white_point', None, 5, 2),
     319: ('primary_chromaticities', None, 5, 6),
-    320: ('color_map', None, 3, None),
+    #320: ('color_map', None, 3, None),
     322: ('tile_width', None, 4, 1),
     323: ('tile_length', None, 4, 1),
-    324: ('tile_offsets', None, 4, None),
-    325: ('tile_byte_counts', None, 4, None),
-    330: ('sub_ifds', None, 4, None),
+    324: ('tile_offsets', None, 16, None),
+    325: ('tile_byte_counts', None, 16, None),
+    #330: ('sub_ifds', None, 4, None),
     338: ('extra_samples', None, 3, None),
     339: ('sample_format', 1, 3, None),
     340: ('smin_sample_value', None, None, None),
     341: ('smax_sample_value', None, None, None),
     346: ('indexed', 0, 3, 1),
-    347: ('jpeg_tables', None, 7, None),
+    #347: ('jpeg_tables', None, 7, None),
     530: ('ycbcr_subsampling', (1, 1), 3, 2),
     531: ('ycbcr_positioning', (1, 1), 3, 1),
     532: ('reference_black_white', None, 5, 1),
     32995: ('sgi_matteing', None, None, 1),  # use extra_samples
-    32996: ('sgi_datatype', None, None, None),  # use sample_format
+    #32996: ('sgi_datatype', None, None, None),  # use sample_format
     32997: ('image_depth', 1, 4, 1),
     32998: ('tile_depth', None, 4, 1),
-    33432: ('copyright', None, 1, None),
+    #33432: ('copyright', None, 1, None),
     33445: ('md_file_tag', None, 4, 1),
     33446: ('md_scale_pixel', None, 5, 1),
-    33447: ('md_color_table', None, 3, None),
+    #33447: ('md_color_table', None, 3, None),
     33448: ('md_lab_name', None, 2, None),
     33449: ('md_sample_info', None, 2, None),
     33450: ('md_prep_date', None, 2, None),
     33451: ('md_prep_time', None, 2, None),
     33452: ('md_file_units', None, 2, None),
     33550: ('model_pixel_scale', None, 12, 3),
-    33922: ('model_tie_point', None, 12, None),
+    #33922: ('model_tie_point', None, 12, None),
     34665: ('exif_ifd', None, None, 1),
-    34735: ('geo_key_directory', None, 3, None),
-    34736: ('geo_double_params', None, 12, None),
+    #34735: ('geo_key_directory', None, 3, None),
+    #34736: ('geo_double_params', None, 12, None),
     34737: ('geo_ascii_params', None, 2, None),
     34853: ('gps_ifd', None, None, 1),
-    37510: ('user_comment', None, None, None),
-    42112: ('gdal_metadata', None, 2, None),
-    42113: ('gdal_nodata', None, 2, None),
+    #37510: ('user_comment', None, None, None),
+    #42112: ('gdal_metadata', None, 2, None),
+    #42113: ('gdal_nodata', None, 2, None),
     50289: ('mc_xy_position', None, 12, 2),
     50290: ('mc_z_position', None, 12, 1),
     50291: ('mc_xy_calibration', None, 12, 3),
     50292: ('mc_lens_lem_na_n', None, 12, 3),
-    50293: ('mc_channel_name', None, 1, None),
+    #50293: ('mc_channel_name', None, 1, None),
     50294: ('mc_ex_wavelength', None, 12, 1),
     50295: ('mc_time_stamp', None, 12, 1),
-    50838: ('imagej_byte_counts', None, None, None),
+    #50838: ('imagej_byte_counts', None, None, None),
     51023: ('fibics_xml', None, 2, None),
     65200: ('flex_xml', None, 2, None),
     # code: (attribute name, default value, type, count, validator)
@@ -254,6 +255,30 @@ TIFF_DATA_TYPES = {
     18: np.dtype("uint64"),     # IFD8 unsigned 8 byte IFD offset (BigTiff)
 }
 
+cdef _to_view(void* pointer, dtype, size):
+    cdef np.ndarray ar
+    if dtype == np.dtype("uint8"):
+        ar = np.asarray(<unsigned char[:size]> pointer)
+    elif dtype == np.dtype("uint16"):
+        ar = np.asarray(<unsigned short[:size]> pointer)
+    elif dtype == np.dtype("uint32"):
+        ar = np.asarray(<unsigned int[:size]> pointer)
+    elif dtype == np.dtype("uint64"):
+        ar = np.asarray(<unsigned long[:size]> pointer)
+    elif dtype == np.dtype("int8"):
+        ar = np.asarray(<char[:size]> pointer)
+    elif dtype == np.dtype("int16"):
+        ar = np.asarray(<short[:size]> pointer)
+    elif dtype == np.dtype("int32"):
+        ar = np.asarray(<int[:size]> pointer)
+    elif dtype == np.dtype("int64"):
+        ar = np.asarray(<long[:size]> pointer)
+    elif dtype == np.dtype("float32"):
+        ar = np.asarray(<float[:size]> pointer)
+    elif dtype == np.dtype("float64"):
+        ar = np.asarray(<double[:size]> pointer)
+    return ar
+
 cdef unsigned int BITSPERSAMPLE = 258
 cdef unsigned int COMPRESSION = 259
 cdef unsigned int EXTRA_SAMPLES = 338
@@ -303,6 +328,7 @@ cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp, short n_samples):
         rgb[row, col, 3] = ctiff.TIFFGetA(inp[row, col])
 
   return rgb
+
 
 cdef class Tiff:
   """The Tiff class handles tiff files.
@@ -900,12 +926,16 @@ cdef class Tiff:
     if self.file_mode != "r":
         raise Exception("Tag reading is only supported in read mode")
     tags = {}
+    cdef const ctiff.TIFFField* fip;
     for key in TIFF_TAGS:
       if key != 297:  # as long as the problem with tag 297 persists
           attribute_name, default_value, data_type, count = TIFF_TAGS[key]
           if count is None:
-            count = 1
-          tags[attribute_name] = self._read_tag(key, data_type, count)
+            count = self._value_count(key)
+          value, error_code = self._read_tag(key, data_type, count)
+          if error_code == 1:
+            tags[attribute_name] = copy.deepcopy(value)
+
     self.tags = tags
     return tags
 
@@ -920,28 +950,32 @@ cdef class Tiff:
             the attribute (either a string or a numpy array of length count)
     """
     cdef np.ndarray data
-
+    cdef void* d
     if data_type is None:
-        return None
+        return None, 0
     elif data_type == 2:
         return self._read_ascii(tag)
     elif data_type == 5:
         data_type = np.dtype("uint32")
         count *= 2
         data = np.zeros(count, dtype=data_type)
-        ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
-        return data
+        err = ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
+        return data, err
     elif data_type == 10:
         data_type = np.dtype("int32")
         count *= 2
         data = np.zeros(count, dtype=data_type)
-        ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
-        return data
+        err = ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
+        return data, err
     else:
         data_type = TIFF_DATA_TYPES[data_type]
-        data = np.zeros(count, dtype=data_type)
-        ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
-        return data
+        if count > 1:
+            err = ctiff.TIFFGetField(self.tiff_handle, tag, &d)
+            data = _to_view(d, data_type, size=count)
+        else:
+            data = np.zeros(count, dtype=data_type)
+            err = ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
+        return data, err
 
   def _read_ascii(self, tag):
     """ reads an ascii string from a Tiff File
@@ -953,11 +987,11 @@ cdef class Tiff:
             the attribute (string)
     """
     cdef char* desc = ''
-    ctiff.TIFFGetField(self.tiff_handle, tag, &desc)
+    err = ctiff.TIFFGetField(self.tiff_handle, tag, &desc)
     str = <string>desc
     if str == "":
       str = None
-    return str
+    return str, err
 
   def set_tags(self, **kwargs):
     """ writes the tag/value pairs in the dict to the Tiff File
@@ -1014,3 +1048,33 @@ cdef class Tiff:
     if bytes == -1:
       raise NotTiledError("Tiled reading not possible")
     return buffer
+
+  def _value_count(self, tag):
+    cdef short planarconfig
+    ctiff.TIFFGetField(self.tiff_handle, PLANARCONFIG, &planarconfig)
+    pool_samples_per_pixel = [
+            TIFF_TAGS_REVERSE["bits_per_sample"],
+            TIFF_TAGS_REVERSE["min_sample_value"],
+            TIFF_TAGS_REVERSE["max_sample_value"],
+            TIFF_TAGS_REVERSE["smin_sample_value"],
+            TIFF_TAGS_REVERSE["smax_sample_value"],
+            TIFF_TAGS_REVERSE["sample_format"]
+            ]
+    if tag == pool_samples_per_pixel:
+        return self.samples_per_pixel
+    elif tag == TIFF_TAGS_REVERSE["strip_offsets"] or tag == TIFF_TAGS_REVERSE["strip_byte_counts"]:
+        if planarconfig == 1:
+            return ctiff.TIFFNumberOfStrips(self.tiff_handle)
+        if planarconfig == 2:
+            return ctiff.TIFFNumberOfStrips(self.tiff_handle) * self.samples_per_pixel
+    elif tag == TIFF_TAGS_REVERSE["tile_offsets"] or tag == TIFF_TAGS_REVERSE["tile_byte_counts"]:
+        if planarconfig == 1:
+            return ctiff.TIFFNumberOfTiles(self.tiff_handle)
+        if planarconfig == 2:
+            return ctiff.TIFFNumberOfTiles(self.tiff_handle) * self.samples_per_pixel
+    elif tag == TIFF_TAGS_REVERSE["extra_samples"]:
+        return self.extra_samples
+    else:
+        return None
+
+
