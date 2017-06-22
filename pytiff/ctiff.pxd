@@ -21,6 +21,7 @@ cdef extern from "tiffio.h":
   ctypedef unsigned int tstrip_t
   # functions
   # general functions
+  int TIFFIsTiled(TIFF*)
   string TIFFGetVersion()
   const TIFFField* TIFFFieldWithTag(TIFF*, ttag_t)
   unsigned int TIFFFieldDataType(const TIFFField* )

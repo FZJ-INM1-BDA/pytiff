@@ -550,11 +550,11 @@ cdef class Tiff:
 
   def is_tiled(self):
     """Return True if image is tiled, else False."""
-    cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.samples_per_pixel - self.extra_samples),dtype=self.dtype).squeeze()
-    cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, 0, 0, 0, 0)
-    if bytes == -1 or not self.tile_width:
-      return False
-    return True
+    tiled = ctiff.TIFFIsTiled(self.tiff_handle)
+    if tiled > 0:
+        return True
+    else:
+        return False
 
   def __enter__(self):
     return self
