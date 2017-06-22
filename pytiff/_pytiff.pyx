@@ -264,7 +264,10 @@ cdef _to_view(void* pointer, dtype, size):
     elif dtype == np.dtype("uint32"):
         ar = np.asarray(<unsigned int[:size]> pointer)
     elif dtype == np.dtype("uint64"):
-        ar = np.asarray(<unsigned long[:size]> pointer)
+        # memory view raises an error TypeError('expected bytes, str found')
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<unsigned long*> pointer)[i]
     elif dtype == np.dtype("int8"):
         ar = np.asarray(<char[:size]> pointer)
     elif dtype == np.dtype("int16"):
