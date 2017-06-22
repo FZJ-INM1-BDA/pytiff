@@ -945,43 +945,55 @@ cdef class Tiff:
         Args:
             tag (integer): the attribute tag
             data_type (integer): the key for the numpy data type specified in TIFF_DATA_TYPES
-            count (integer): length of the attribute
+            count (integer): number of elements for the tag
         Returns:
-            the attribute (either a string or a numpy array of length count)
+            tuple: the attribute (either a string or a numpy array of length count), error code (1 == success)
     """
     cdef np.ndarray data
     cdef void* d
     cdef unsigned short page, n_pages
+    # if no data type, don't try to read
     if data_type is None:
         return None, 0
-    elif data_type == 2:
+
+    # special case for strings
+    if data_type == 2:
         return self._read_ascii(tag)
-    elif data_type == 5:
+
+    # double count for RATIONAL datatype
+    # every uint64 value has 2 uint32 values
+    if data_type == 5:
         data_type = np.dtype("uint32")
         count *= 2
-        data = np.zeros(count, dtype=data_type)
-        err = ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
-        return data, err
+    # the same goes for SRATIONAL
     elif data_type == 10:
         data_type = np.dtype("int32")
         count *= 2
-        data = np.zeros(count, dtype=data_type)
-        err = ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
-        return data, err
+    # if neither RATIONAL nor SRATIONAL
+    # use the mapped data type
     else:
         data_type = TIFF_DATA_TYPES[data_type]
-        if tag == TIFF_TAGS_REVERSE["page_number"]:
-            data = np.zeros(count, dtype=data_type)
-            err = ctiff.TIFFGetField(self.tiff_handle, tag, &page , &n_pages)
-            data[0] = page
-            data[1] = n_pages
-        elif count > 1:
-            err = ctiff.TIFFGetField(self.tiff_handle, tag, &d)
-            data = _to_view(d, data_type, size=count)
-        else:
-            data = np.zeros(count, dtype=data_type)
-            err = ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
-        return data, err
+
+    # another special case is the page number
+    # TIFFGetField expects two shorts and not a pointer
+    if tag == TIFF_TAGS_REVERSE["page_number"]:
+        data = np.zeros(count, dtype=data_type)
+        err = ctiff.TIFFGetField(self.tiff_handle, tag, &page , &n_pages)
+        data[0] = page
+        data[1] = n_pages
+    # handle tags with count > 1, this only works if TIFFGetField expects a
+    # pointer to an array. A buffer variable needs to be used because
+    # TIFFGetField allocates the necessary memory itself. Afterwards the data
+    # is saved in a numpy array.
+    elif count > 1:
+        err = ctiff.TIFFGetField(self.tiff_handle, tag, &d)
+        data = _to_view(d, data_type, size=count)
+    # simple case if count == 1. Use a reference to allocated memory.
+    else:
+        data = np.zeros(count, dtype=data_type)
+        err = ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
+
+    return data, err
 
   def _read_ascii(self, tag):
     """ reads an ascii string from a Tiff File
