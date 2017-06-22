@@ -3,6 +3,8 @@ import hypothesis.strategies as st
 from pytiff import *
 import tifffile
 import numpy as np
+import sys
+import logging
 
 def test_tags():
     with Tiff("test_data/small_example_tiled.tif") as handle:
@@ -12,7 +14,7 @@ def test_tags():
         page1 = handle.pages[0]
         for tag in page1.tags.values():
             name, value = tag.name, tag.value
-            if type(value) == "bytes":
+            if isinstance(value, bytes):
                 value = value.decode()
                 assert value == tags[name], "key {}: {} == {}".format(name, value, tags[name])
             elif name == "x_resolution" or name == "y_resolution":
@@ -31,7 +33,7 @@ def test_tags_strips():
         page1 = handle.pages[0]
         for tag in page1.tags.values():
             name, value = tag.name, tag.value
-            if type(value) == "bytes":
+            if isinstance(value, bytes):
                 value = value.decode()
                 assert value == tags[name], "key {}: {} == {}".format(name, value, tags[name])
             elif name == "x_resolution" or name == "y_resolution":
@@ -50,7 +52,7 @@ def test_tags_rbg():
         page1 = handle.pages[0]
         for tag in page1.tags.values():
             name, value = tag.name, tag.value
-            if type(value) == "bytes":
+            if isinstance(value, bytes):
                 value = value.decode()
                 assert value == tags[name], "key {}: {} == {}".format(name, value, tags[name])
             elif name == "x_resolution" or name == "y_resolution":
@@ -69,7 +71,7 @@ def test_tags_bigtif():
         page1 = handle.pages[0]
         for tag in page1.tags.values():
             name, value = tag.name, tag.value
-            if type(value) == "bytes":
+            if isinstance(value, bytes):
                 value = value.decode()
                 assert value == tags[name], "key {}: {} == {}".format(name, value, tags[name])
             elif name == "x_resolution" or name == "y_resolution":
@@ -79,3 +81,4 @@ def test_tags_bigtif():
                 value.squeeze()
 
                 assert np.all(value == tags[name]), "key {}: {} == {}".format(name, value, tags[name])
+
