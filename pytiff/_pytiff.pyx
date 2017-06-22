@@ -928,7 +928,7 @@ cdef class Tiff:
     tags = {}
     cdef const ctiff.TIFFField* fip;
     for key in TIFF_TAGS:
-      if key != 297:  # as long as the problem with tag 297 persists
+      if key != -1:  # as long as the problem with tag 297 persists
           attribute_name, default_value, data_type, count = TIFF_TAGS[key]
           if count is None:
             count = self._value_count(key)
@@ -951,6 +951,7 @@ cdef class Tiff:
     """
     cdef np.ndarray data
     cdef void* d
+    cdef unsigned short page, n_pages
     if data_type is None:
         return None, 0
     elif data_type == 2:
@@ -969,7 +970,12 @@ cdef class Tiff:
         return data, err
     else:
         data_type = TIFF_DATA_TYPES[data_type]
-        if count > 1:
+        if tag == TIFF_TAGS_REVERSE["page_number"]:
+            data = np.zeros(count, dtype=data_type)
+            err = ctiff.TIFFGetField(self.tiff_handle, tag, &page , &n_pages)
+            data[0] = page
+            data[1] = n_pages
+        elif count > 1:
             err = ctiff.TIFFGetField(self.tiff_handle, tag, &d)
             data = _to_view(d, data_type, size=count)
         else:
