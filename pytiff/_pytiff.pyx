@@ -61,7 +61,7 @@ TIFF_TAGS = {
     255: ('subfile_type', None, 3, 1),
     256: ('image_width', None, 4, 1),
     257: ('image_length', None, 4, 1),
-    258: ('bits_per_sample', 1, 3, None),
+    258: ('bits_per_sample', 1, 3, 1), # changed from None to 1 since libtiff only support same number of bits per sample
     259: ('compression', 1, 3, 1),
     262: ('photometric', None, 3, 1),
     266: ('fill_order', 1, 3, 1),
@@ -387,9 +387,11 @@ cdef class Tiff:
     """Initialize page specific attributes."""
     self.logger.debug("_init_page called.")
     self.samples_per_pixel = 1
-    ctiff.TIFFGetField(self.tiff_handle, SAMPLES_PER_PIXEL, &self.samples_per_pixel)
+    err = ctiff.TIFFGetField(self.tiff_handle, SAMPLES_PER_PIXEL, &self.samples_per_pixel)
+    assert err == 1
     cdef np.ndarray[np.int16_t, ndim=1] bits_buffer = np.zeros(self.samples_per_pixel, dtype=np.int16)
-    ctiff.TIFFGetField(self.tiff_handle, BITSPERSAMPLE, <ctiff.ttag_t*>bits_buffer.data)
+    err = ctiff.TIFFGetField(self.tiff_handle, BITSPERSAMPLE, <ctiff.ttag_t*>bits_buffer.data)
+    assert err == 1
     self.n_bits_view = bits_buffer
 
     self.sample_format = 1
@@ -928,13 +930,19 @@ cdef class Tiff:
     tags = {}
     for key in TIFF_TAGS:
         attribute_name, default_value, data_type, count = TIFF_TAGS[key]
-        if count is None:
-          self.logger.debug("count was None")
+        # if no string and count is None get variable length
+        if count is None and data_type != 2:
           count = self._value_count(key)
+          if count is None:
+              self.logger.warn("Tag: {} not supported and omitted".format(attribute_name))
+              continue
         self.logger.debug("name: {}, count: {}, data_type: {}".format(attribute_name, count, data_type))
         value, error_code = self._read_tag(key, data_type, count)
         if error_code == 1:
           self.logger.debug("Tag {} read!".format(attribute_name))
+          if attribute_name == "bits_per_sample":
+              self.logger.debug("convert bits per sample to an array of length samples per pixel")
+              value = np.ones(self.samples_per_pixel, dtype=np.uint16) * value[0]
           tags[attribute_name] = copy.deepcopy(value)
 
     self.tags = tags
@@ -1086,7 +1094,8 @@ cdef class Tiff:
             TIFF_TAGS_REVERSE["smax_sample_value"],
             TIFF_TAGS_REVERSE["sample_format"]
             ]
-    if tag == pool_samples_per_pixel:
+    if tag in pool_samples_per_pixel:
+        sys.stdout.flush()
         return self.samples_per_pixel
     elif tag == TIFF_TAGS_REVERSE["strip_offsets"] or tag == TIFF_TAGS_REVERSE["strip_byte_counts"]:
         if planarconfig == 1:
@@ -1102,5 +1111,4 @@ cdef class Tiff:
         return self.extra_samples
     else:
         return None
-
 
