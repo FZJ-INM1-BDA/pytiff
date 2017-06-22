@@ -926,15 +926,16 @@ cdef class Tiff:
     if self.file_mode != "r":
         raise Exception("Tag reading is only supported in read mode")
     tags = {}
-    cdef const ctiff.TIFFField* fip;
     for key in TIFF_TAGS:
-      if key != -1:  # as long as the problem with tag 297 persists
-          attribute_name, default_value, data_type, count = TIFF_TAGS[key]
-          if count is None:
-            count = self._value_count(key)
-          value, error_code = self._read_tag(key, data_type, count)
-          if error_code == 1:
-            tags[attribute_name] = copy.deepcopy(value)
+        attribute_name, default_value, data_type, count = TIFF_TAGS[key]
+        if count is None:
+          self.logger.debug("count was None")
+          count = self._value_count(key)
+        self.logger.debug("name: {}, count: {}, data_type: {}".format(attribute_name, count, data_type))
+        value, error_code = self._read_tag(key, data_type, count)
+        if error_code == 1:
+          self.logger.debug("Tag {} read!".format(attribute_name))
+          tags[attribute_name] = copy.deepcopy(value)
 
     self.tags = tags
     return tags
@@ -958,20 +959,24 @@ cdef class Tiff:
 
     # special case for strings
     if data_type == 2:
+        self.logger.debug("string tag")
         return self._read_ascii(tag)
 
     # double count for RATIONAL datatype
     # every uint64 value has 2 uint32 values
     if data_type == 5:
+        self.logger.debug("rational tag")
         data_type = np.dtype("uint32")
         count *= 2
     # the same goes for SRATIONAL
     elif data_type == 10:
+        self.logger.debug("srational tag")
         data_type = np.dtype("int32")
         count *= 2
     # if neither RATIONAL nor SRATIONAL
     # use the mapped data type
     else:
+        self.logger.debug("normal tag")
         data_type = TIFF_DATA_TYPES[data_type]
 
     # another special case is the page number
@@ -987,7 +992,10 @@ cdef class Tiff:
     # is saved in a numpy array.
     elif count > 1:
         err = ctiff.TIFFGetField(self.tiff_handle, tag, &d)
-        data = _to_view(d, data_type, size=count)
+        if err == 1:
+            data = _to_view(d, data_type, size=count)
+        else:
+            data = None
     # simple case if count == 1. Use a reference to allocated memory.
     else:
         data = np.zeros(count, dtype=data_type)
