@@ -7,9 +7,6 @@ cdef extern from "tiffio.h":
   ctypedef struct TIFF:
     pass
 
-  ctypedef struct TIFFField:
-    pass
-
   # typedefs
   ctypedef unsigned int ttag_t
   ctypedef unsigned int ttile_t
@@ -22,8 +19,6 @@ cdef extern from "tiffio.h":
   # functions
   # general functions
   string TIFFGetVersion()
-  const TIFFField* TIFFFieldWithTag(TIFF*, ttag_t)
-  unsigned int TIFFFieldDataType(const TIFFField* )
   int TIFFGetField(TIFF*, ttag_t, ...)
   int TIFFSetField(TIFF* tif, ttag_t tag, ...)
   TIFF* TIFFOpen(const char*, const char*)
