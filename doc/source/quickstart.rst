@@ -124,6 +124,29 @@ A bigtiff file can be created by telling pytiff to use the bigtiff mode.
     data = np.random.randint(high=255, size=(80000, 80000), dtype=np.uint8)
     handle.write(data, method="tile")
 
+---------------------------------
+Reading and Writing Standard Tags
+---------------------------------
+
+A tiff file can contain many tags. Pytiff supports reading and writing baseline tags and some more.
+
+.. code:: python
+
+    import pytiff
+    with pytiff.Tiff("test_data/small_example.tif") as handle:
+      tags = handle.read_tags()
+      for k in tags: # or handle.tags
+        print("{key}: {value}".format(key=k, value=tags[k]))
+
+Writing tags has to be done before image data is written to the current page.
+
+.. code:: python
+
+    import pytiff
+    with pytiff.Tiff("test_data/tmp.tif", "w") as handle:
+      handle.set_tags(image_description="Image description")
+      handle.write(data)
+
 ----------------
 More information
 ----------------

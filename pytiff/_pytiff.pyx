@@ -948,7 +948,7 @@ cdef class Tiff:
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x_chunk+x, y_chunk+y, 0, 0)
 
   def read_tags(self):
-    """  reads the tags and saves them in a dictionary
+    """  reads standard tags and saves them in a dictionary
 
         Returns
             the tags (dictionary) (they are also saved as an attribute of the pyTiff Object)
@@ -1065,14 +1065,16 @@ cdef class Tiff:
   def set_tags(self, **kwargs):
     """ writes the tag/value pairs in the dict to the Tiff File
 
+        Tags must be written before image data is written to the current page.
+
         Args:
             kwargs (dictionary): consists of tag/value pairs, where
                 tag (integer/string): either a tag or an attribute name
                 value: the value which should be written to the Tiff File
 
-        Example Usage:
-            tiff_file.set_tags(**{"artist": "John Doe"})
-            tiff_file.write(arary)
+        Examples:
+            >>> tiff_file.set_tags(artist="John Doe"})
+            >>> tiff_file.write(array)
     """
     if self.file_mode == "r":
         raise Exception("Tag writing is not supported in read mode")
