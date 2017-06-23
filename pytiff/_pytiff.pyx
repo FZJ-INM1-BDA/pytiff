@@ -58,7 +58,7 @@ INVERSE_TYPE_MAP = {
 # code: (attribute name, default value, type, count, validator)
 TIFF_TAGS = {
     254: ('new_subfile_type', 0, 4, 1),
-    255: ('subfile_type', None, 3, 1),
+    #255: ('subfile_type', None, 3, 1), should not be used
     256: ('image_width', None, 4, 1),
     257: ('image_length', None, 4, 1),
     258: ('bits_per_sample', 1, 3, 1), # changed from None to 1 since libtiff only support same number of bits per sample
@@ -98,7 +98,7 @@ TIFF_TAGS = {
     325: ('tile_byte_counts', None, 16, None),
     #330: ('sub_ifds', None, 4, None),
     338: ('extra_samples', None, 3, None),
-    339: ('sample_format', 1, 3, None),
+    339: ('sample_format', 1, 3, 1), # changed None to 1
     340: ('smin_sample_value', None, None, None),
     341: ('smax_sample_value', None, None, None),
     346: ('indexed', 0, 3, 1),
@@ -229,6 +229,13 @@ TIFF_TAGS_REVERSE = {
     # code: (attribute name, default value, type, count, validator)
 }
 
+TIFF_TAGS_NOT_WRITABLE = [
+        "tile_offsets",
+        "tile_byte_counts",
+        "strip_byte_counts",
+        "strip_offsets"
+        ]
+
 # the data types to the corresponding type in TIFF_TAGS
 TIFF_DATA_TYPES = {
     1: np.dtype("uint8"),       # BYTE 8-bit unsigned integer.
@@ -258,28 +265,46 @@ TIFF_DATA_TYPES = {
 cdef _to_view(void* pointer, dtype, size):
     cdef np.ndarray ar
     if dtype == np.dtype("uint8"):
-        ar = np.asarray(<unsigned char[:size]> pointer)
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<unsigned char*> pointer)[i]
     elif dtype == np.dtype("uint16"):
-        ar = np.asarray(<unsigned short[:size]> pointer)
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<unsigned short*> pointer)[i]
     elif dtype == np.dtype("uint32"):
-        ar = np.asarray(<unsigned int[:size]> pointer)
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<unsigned int*> pointer)[i]
     elif dtype == np.dtype("uint64"):
         # memory view raises an error TypeError('expected bytes, str found')
         ar = np.zeros(size, dtype)
         for i in range(size):
             ar[i] = (<unsigned long*> pointer)[i]
     elif dtype == np.dtype("int8"):
-        ar = np.asarray(<char[:size]> pointer)
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<char*> pointer)[i]
     elif dtype == np.dtype("int16"):
-        ar = np.asarray(<short[:size]> pointer)
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<short*> pointer)[i]
     elif dtype == np.dtype("int32"):
-        ar = np.asarray(<int[:size]> pointer)
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<int*> pointer)[i]
     elif dtype == np.dtype("int64"):
-        ar = np.asarray(<long[:size]> pointer)
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<long*> pointer)[i]
     elif dtype == np.dtype("float32"):
-        ar = np.asarray(<float[:size]> pointer)
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<float*> pointer)[i]
     elif dtype == np.dtype("float64"):
-        ar = np.asarray(<double[:size]> pointer)
+        ar = np.zeros(size, dtype)
+        for i in range(size):
+            ar[i] = (<double*> pointer)[i]
     return ar
 
 cdef unsigned int BITSPERSAMPLE = 258
@@ -550,11 +575,11 @@ cdef class Tiff:
 
   def is_tiled(self):
     """Return True if image is tiled, else False."""
-    cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.samples_per_pixel - self.extra_samples),dtype=self.dtype).squeeze()
-    cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, 0, 0, 0, 0)
-    if bytes == -1 or not self.tile_width:
-      return False
-    return True
+    tiled = ctiff.TIFFIsTiled(self.tiff_handle)
+    if tiled > 0:
+        return True
+    else:
+        return False
 
   def __enter__(self):
     return self
@@ -923,7 +948,7 @@ cdef class Tiff:
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x_chunk+x, y_chunk+y, 0, 0)
 
   def read_tags(self):
-    """  reads the tags and saves them in a dictionary
+    """  reads standard tags and saves them in a dictionary
 
         Returns
             the tags (dictionary) (they are also saved as an attribute of the pyTiff Object)
@@ -933,6 +958,14 @@ cdef class Tiff:
     tags = {}
     for key in TIFF_TAGS:
         attribute_name, default_value, data_type, count = TIFF_TAGS[key]
+
+        # if tiled dont read strip offsets and counts
+        # if not tiled dont read tile offsets and counts
+        if attribute_name in ["strip_byte_counts", "strip_offsets"] and self.is_tiled():
+            continue
+        if attribute_name in ["tile_byte_counts", "tile_offsets"] and not self.is_tiled():
+            continue
+
         # if no string and count is None get variable length
         if count is None and data_type != 2:
           count = self._value_count(key)
@@ -1011,7 +1044,6 @@ cdef class Tiff:
     else:
         data = np.zeros(count, dtype=data_type)
         err = ctiff.TIFFGetField(self.tiff_handle, tag, <void *> data.data)
-
     return data, err
 
   def _read_ascii(self, tag):
@@ -1033,19 +1065,23 @@ cdef class Tiff:
   def set_tags(self, **kwargs):
     """ writes the tag/value pairs in the dict to the Tiff File
 
+        Tags must be written before image data is written to the current page.
+
         Args:
             kwargs (dictionary): consists of tag/value pairs, where
                 tag (integer/string): either a tag or an attribute name
                 value: the value which should be written to the Tiff File
 
-        Example Usage:
-            tiff_file.set_tags(**{"artist": "John Doe"})
-            tiff_file.write(arary)
+        Examples:
+            >>> tiff_file.set_tags(artist="John Doe"})
+            >>> tiff_file.write(array)
     """
     if self.file_mode == "r":
         raise Exception("Tag writing is not supported in read mode")
 
     for key in kwargs:
+      if key in TIFF_TAGS_NOT_WRITABLE:
+          continue
       self._set_tag(key, kwargs[key])
 
   def _set_tag(self, tag, value):
@@ -1056,21 +1092,45 @@ cdef class Tiff:
             tag (integer/string): either a tag or attribute name
             value: the value which should be written to the Tiff File
     """
+
     cdef np.ndarray data
+    cdef char* char_ptr
+    cdef unsigned int count
+    # helper variables
+    cdef unsigned char page, total_pages
+    cdef float fval
     if type(tag) == int:
       tag = tag
     else:
         tag = TIFF_TAGS_REVERSE[tag]
+
+    # special case for page number, same as for reading the tag
+    if TIFF_TAGS_REVERSE["page_number"] == tag:
+      page = value[0]
+      total_pages = value[1]
+      err = ctiff.TIFFSetField(self.tiff_handle, tag, page, total_pages)
+      return
     if isinstance(value, str):
       value = value + "\0"
       if PY3:
-         data = np.array([value.encode()])
+         py_byte_string = value.encode()
+         char_ptr = py_byte_string
       else:
-         data = np.array([value])
+         char_ptr = value
+      err = ctiff.TIFFSetField(self.tiff_handle, tag, char_ptr)
+      return
     else:
       data = value
+
     assert isinstance(data, np.ndarray)
-    ctiff.TIFFSetField(self.tiff_handle, tag, <void *> data.data)
+    if len(data) > 1:
+        count = len(data)
+        ctiff.TIFFSetField(self.tiff_handle, tag, count,<void *> data.data)
+    else:
+        if data.dtype == np.dtype("float32"):
+            fval = data.item(0)
+            err = ctiff.TIFFSetField(self.tiff_handle, tag, <float> data.item(0))
+        err = ctiff.TIFFSetField(self.tiff_handle, tag, data.data[0])
 
   def save_page(self):
     """ saves the page """
