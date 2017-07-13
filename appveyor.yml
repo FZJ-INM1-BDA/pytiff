@@ -88,7 +88,7 @@ install:
   # target Python version and architecture
   #- "%CMD_IN_ENV% pip install -r dev-requirements.txt"
   - "conda install -y libtiff numpy cython scikit-image"
-  - "pip install -y pytest pytest-cov hypothesis tifffile"
+  - "pip install pytest pytest-cov hypothesis tifffile"
 
 build_script:
   # Build the compiled extension
