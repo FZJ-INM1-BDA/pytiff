@@ -1,4 +1,9 @@
 environment:
+  branches:
+      only:
+          - master
+  skip_non_tags: true
+
   password:
       secure: w2/etY3RFpSnLTir+nZMkg==
   global:
