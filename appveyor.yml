@@ -73,6 +73,8 @@ install:
   # done from inside the powershell script as it would require to restart
   # the parent CMD process).
   - "SET PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
+  - "SET INCLUDE=%MINICONDA%\\Library\\include;%INCLUDE%"
+  - "SET LIB=%MINICODNA%\\Library\\lib;%LIB%"
 
   # Check that we have the expected version and architecture for Python
   - "python --version"
