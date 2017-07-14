@@ -92,7 +92,7 @@ install:
   - "conda install -y libtiff numpy cython scikit-image"
     #- "pip install pytest pytest-cov hypothesis tifffile"
 
-  - "copy %MINICONDA%\\Library\lib\\tiff.lib ."
+  - "copy %MINICONDA%\\Library\\lib\\tiff.lib ."
 
 build_script:
   # Build the compiled extension
