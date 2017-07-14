@@ -17,6 +17,7 @@ doc: [![Documentation Status](https://readthedocs.org/projects/pytiff/badge/?ver
 
 ## Installation
 
+### Installation on Linux / Mac
 Just use pip
 
 ```bash
@@ -31,6 +32,19 @@ cd pytiff
 pip install -r requirements.txt
 pip install . # or python setup.py install
 ```
+
+### Installation on Windows
+
+**Recommended**: Use Anaconda
+
+    * Install Anaconda or Miniconda
+    * Install [Microsoft Visual C++ Build Tools](http://landinghub.visualstudio.com/visual-cpp-build-tools)
+    * Install Visual C++ using Visual Studio (development headers..)
+    * Set your INCLUDE environment variable to "path\to\anaconda\Library\include"
+    * Set LIB environment variable to point to "tiff.lib" or Copy tiff.lib from "Anaconda\Library\lib\" into the installation directory
+    * Start Visual Studio Development CMD
+    * `python setup.py install`
+
 
 ## Development
 
