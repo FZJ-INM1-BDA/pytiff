@@ -416,10 +416,13 @@ cdef class Tiff:
     self.logger.debug("_init_page called.")
     self.samples_per_pixel = 1
     err = ctiff.TIFFGetField(self.tiff_handle, SAMPLES_PER_PIXEL, &self.samples_per_pixel)
-    assert err == 1
+    if err != 1:
+        self.logger.warn("Could not read samples per pixel tag! 1 is assumed!")
+        self.samples_per_pixel = 1
     cdef np.ndarray[np.int16_t, ndim=1] bits_buffer = np.zeros(self.samples_per_pixel, dtype=np.int16)
     err = ctiff.TIFFGetField(self.tiff_handle, BITSPERSAMPLE, <ctiff.ttag_t*>bits_buffer.data)
-    assert err == 1
+    if err != 1:
+        self.logger.warn("Could not read bits per sample tag!")
     self.n_bits_view = bits_buffer
 
     self.sample_format = 1

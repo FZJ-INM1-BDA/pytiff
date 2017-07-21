@@ -1,4 +1,9 @@
 environment:
+  branches:
+      only:
+          - master
+  skip_non_tags: true
+
   password:
       secure: w2/etY3RFpSnLTir+nZMkg==
   global:
@@ -108,8 +113,6 @@ test_script:
 after_test:
   # If tests are successful, create binary packages for the project.
   - "python setup.py bdist_wheel"
-  #- "python setup.py bdist_wininst"
-  - "python setup.py bdist_msi"
   - ps: "ls dist"
 
 artifacts:
@@ -121,5 +124,3 @@ on_success:
   - "echo username: pglock >> %USERPROFILE%\\.pypirc"
   - "echo password: %password% >> %USERPROFILE%\\.pypirc"
   - "twine upload dist\\*"
-#  - TODO: upload the content of dist/*.whl to a public wheelhouse
-#
