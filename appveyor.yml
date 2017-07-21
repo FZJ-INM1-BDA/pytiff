@@ -1,7 +1,4 @@
 environment:
-  branches:
-      only:
-          - master
   skip_non_tags: true
 
   password:
