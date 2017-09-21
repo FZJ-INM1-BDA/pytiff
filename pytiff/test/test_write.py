@@ -36,8 +36,19 @@ def test_write_int_scanline(data, tmpdir_factory):
 
     with tifffile.TiffFile(filename) as handle:
         img = handle.asarray()
-        assert data.dtype == img.dtype
-        assert np.all(data == img)
+        np.testing.assert_array_equal(data, img)
+
+@given(data=hnp.arrays(dtype=st.one_of(hnp.integer_dtypes(endianness="="), hnp.unsigned_integer_dtypes(endianness="=")),
+    shape=hnp.array_shapes(min_dims=3, max_dims=3, min_side=20, max_side=20)))
+def test_write_int_slices_scanline(data, tmpdir_factory):
+    for i in range(data.shape[2]):
+        filename = str(tmpdir_factory.mktemp("write").join("int_img_{}.tif".format(i)))
+        with Tiff(filename, "w") as handle:
+            handle.write(data[:, :, i], method="scanline")
+
+        with tifffile.TiffFile(filename) as handle:
+            img = handle.asarray()
+            np.testing.assert_array_equal(data[:,:, i], img)
 
 # tile integer tests
 
@@ -51,8 +62,7 @@ def test_write_int_tile(data, tmpdir_factory):
 
     with tifffile.TiffFile(filename) as handle:
         img = handle.asarray()
-        assert data.dtype == img.dtype
-        assert np.all(data == img)
+        np.testing.assert_array_equal(data, img)
 
 @settings(buffer_size=11000000)
 @given(data=hnp.arrays(dtype=hnp.floating_dtypes(endianness="="),
@@ -64,8 +74,7 @@ def test_write_float_scanline(data, tmpdir_factory):
 
     with tifffile.TiffFile(filename) as handle:
         img = handle.asarray()
-        assert data.dtype == img.dtype
-        assert np.all(data == img)
+        np.testing.assert_array_equal(data, img)
 
 @settings(buffer_size=11000000)
 @given(data=hnp.arrays(dtype=hnp.floating_dtypes(endianness="="),
@@ -77,8 +86,7 @@ def test_write_float_tile(data, tmpdir_factory):
 
     with tifffile.TiffFile(filename) as handle:
         img = handle.asarray()
-        assert data.dtype == img.dtype
-        assert np.all(data == img)
+        np.testing.assert_array_equal(data, img)
 
 @settings(buffer_size=11000000)
 @given(data=hnp.arrays(dtype=st.one_of(hnp.integer_dtypes(endianness="="), hnp.unsigned_integer_dtypes(endianness="=")),
@@ -96,8 +104,8 @@ def test_append_int_tile(data, tmpdir_factory):
 
     with tifffile.TiffFile(filename) as handle:
         img = handle.asarray()
-        assert data.dtype == img.dtype
-        assert np.all(data == img)
+        np.testing.assert_array_equal(data, img[0])
+        np.testing.assert_array_equal(data, img[1])
 
 @settings(buffer_size=11000000)
 def test_write_chunk(tmpdir_factory):

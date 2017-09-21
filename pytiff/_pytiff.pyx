@@ -789,6 +789,9 @@ cdef class Tiff:
     ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
     ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
     ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
+    self.logger.debug("Write config: {} bits per sample, {} samples per pixel, {} x {} image size".format(nbits,
+        samples_per_pixel, data.shape[0], data.shape[1]))
+    self.logger.debug("Type of input data: {}, max value: {} min value: {} C contiguous: {}".format(data.dtype, data.max(), data.min(), data.flags.c_contiguous))
 
     write_method = options.get("method", "tile")
     if write_method == "tile":
@@ -802,6 +805,7 @@ cdef class Tiff:
     cdef short tile_length, tile_width
     tile_length = options.get("tile_length", 240)
     tile_width = options.get("tile_width", 240)
+    self.logger.debug("Writing tiles of size {} x {}".format(tile_length, tile_width))
 
     ctiff.TIFFSetField(self.tiff_handle, TILE_LENGTH, tile_length)
     ctiff.TIFFSetField(self.tiff_handle, TILE_WIDTH, tile_width)
@@ -809,6 +813,8 @@ cdef class Tiff:
     cdef np.ndarray buffer
     n_tile_rows = int(np.ceil(data.shape[0] / float(tile_length)))
     n_tile_cols = int(np.ceil(data.shape[1] / float(tile_width)))
+    self.logger.debug("Number of tiles in a row: {}".format(n_tile_rows))
+    self.logger.debug("Number of tiles in a column: {}".format(n_tile_cols))
 
     cdef unsigned int x, y
     for i in range(n_tile_rows):
@@ -820,12 +826,17 @@ cdef class Tiff:
         if data.ndim ==3:
             to_pad += [(0,0)]
         buffer = np.pad(buffer, to_pad, "constant", constant_values=(0))
+        self.logger.debug("Buffer array c contiguous: {}".format(buffer.flags.c_contiguous))
 
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x, y, 0, 0)
 
     ctiff.TIFFWriteDirectory(self.tiff_handle)
 
   def _write_scanline(self, np.ndarray data, **options):
+      self.logger.debug("Writing scanlines")
+      if not data.flags.c_contiguous:
+          data = np.ascontiguousarray(data)
+      self.logger.debug("Data array c contiguous: {}".format(data.flags.c_contiguous))
       ctiff.TIFFSetField(self.tiff_handle, 278, ctiff.TIFFDefaultStripSize(self.tiff_handle, data.shape[1])) # rows per strip, use tiff function for estimate
       cdef np.ndarray row
       for i in range(data.shape[0]):
