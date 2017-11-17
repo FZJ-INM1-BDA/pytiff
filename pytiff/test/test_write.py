@@ -38,17 +38,17 @@ def test_write_int_scanline(data, tmpdir_factory):
         img = handle.asarray()
         np.testing.assert_array_equal(data, img)
 
+@settings(buffer_size=11000000)
 @given(data=hnp.arrays(dtype=st.one_of(hnp.integer_dtypes(endianness="="), hnp.unsigned_integer_dtypes(endianness="=")),
-    shape=hnp.array_shapes(min_dims=3, max_dims=3, min_side=20, max_side=20)))
+    shape=hnp.array_shapes(min_dims=2, max_dims=2, min_side=20, max_side=20)))
 def test_write_int_slices_scanline(data, tmpdir_factory):
-    for i in range(data.shape[2]):
-        filename = str(tmpdir_factory.mktemp("write").join("int_img_{}.tif".format(i)))
-        with Tiff(filename, "w") as handle:
-            handle.write(data[:, :, i], method="scanline")
+    filename = str(tmpdir_factory.mktemp("write").join("int_img_scanline.tif"))
+    with Tiff(filename, "w") as handle:
+        handle.write(data[:, :], method="scanline")
 
-        with tifffile.TiffFile(filename) as handle:
-            img = handle.asarray()
-            np.testing.assert_array_equal(data[:,:, i], img)
+    with tifffile.TiffFile(filename) as handle:
+        img = handle.asarray()
+        np.testing.assert_array_equal(data[:,:], img)
 
 # tile integer tests
 
