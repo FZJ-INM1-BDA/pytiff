@@ -1,7 +1,11 @@
 from pytiff import *
 import pytest
 import pickle
-import cPickle
+import sys
+if sys.version_info.major > 2:
+    import pickle as cPickle
+else:
+    import cPickle
 import numpy as np
 
 TILED_GREY = "test_data/small_example_tiled.tif"
