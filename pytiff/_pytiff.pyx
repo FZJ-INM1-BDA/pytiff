@@ -357,6 +357,12 @@ cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp, short n_samples):
 
   return rgb
 
+cpdef object rebuild(data):
+    filename, file_mode, bigtiff, current_page = data
+    obj = Tiff(filename, file_mode, bigtiff)
+    obj.set_page(current_page)
+    return obj
+
 
 cdef class Tiff:
   """The Tiff class handles tiff files.
@@ -443,6 +449,16 @@ cdef class Tiff:
         self.extra_samples += 1
 
     self.cached = False
+
+  def __reduce__(self):
+      if "w" in self.file_mode or "a" in self.file_mode:
+          self.logger.warn("Tiff Object is pickled in write or append mode")
+
+      bigtiff = False
+      if "8" in self.file_mode:
+          bigtiff = True
+      data = self.filename, self.file_mode, bigtiff, self.current_page
+      return rebuild, (data,)
 
   @property
   def description(self):

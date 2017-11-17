@@ -12,6 +12,7 @@ writing of greyscale images in tile or scanline mode.
    :hidden:
 
    quickstart
+   pickle
    pytiff
 
 Indices and tables
