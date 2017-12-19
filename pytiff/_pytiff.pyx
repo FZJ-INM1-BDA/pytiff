@@ -849,16 +849,22 @@ cdef class Tiff:
     ctiff.TIFFWriteDirectory(self.tiff_handle)
 
   def _write_scanline(self, np.ndarray data, **options):
-      self.logger.debug("Writing scanlines")
-      if not data.flags.c_contiguous:
-          data = np.ascontiguousarray(data)
-      self.logger.debug("Data array c contiguous: {}".format(data.flags.c_contiguous))
-      ctiff.TIFFSetField(self.tiff_handle, 278, ctiff.TIFFDefaultStripSize(self.tiff_handle, data.shape[1])) # rows per strip, use tiff function for estimate
-      cdef np.ndarray row
-      for i in range(data.shape[0]):
-        row = data[i]
-        ctiff.TIFFWriteScanline(self.tiff_handle, <void *>row.data, i, 0)
-      ctiff.TIFFWriteDirectory(self.tiff_handle)
+    cdef np.ndarray key_data
+    self.logger.debug("Writing scanlines")
+    if not data.flags.c_contiguous:
+        data = np.ascontiguousarray(data)
+    self.logger.debug("Data array c contiguous: {}".format(data.flags.c_contiguous))
+    if "rows_per_strip" in options:#
+      key_data = options["rows_per_strip"]
+      assert isinstance(key_data, np.ndarray)
+      ctiff.TIFFSetField(self.tiff_handle, ROWSPERSTRIP, key_data.data[0])
+    else:
+      ctiff.TIFFSetField(self.tiff_handle, ROWSPERSTRIP, ctiff.TIFFDefaultStripSize(self.tiff_handle, data.shape[1])) # rows per strip, use tiff function for estimate
+    cdef np.ndarray row
+    for i in range(data.shape[0]):
+      row = data[i]
+      ctiff.TIFFWriteScanline(self.tiff_handle, <void *>row.data, i, 0)
+    ctiff.TIFFWriteDirectory(self.tiff_handle)
 
   def new_page(self, image_size, dtype, **options):
     """ adds a new page to the tiff file, and initializes chunk writing
@@ -1204,4 +1210,3 @@ cdef class Tiff:
         return self.extra_samples
     else:
         return None
-
