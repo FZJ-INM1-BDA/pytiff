@@ -849,15 +849,15 @@ cdef class Tiff:
     ctiff.TIFFWriteDirectory(self.tiff_handle)
 
   def _write_scanline(self, np.ndarray data, **options):
-    cdef np.ndarray key_data
     self.logger.debug("Writing scanlines")
     if not data.flags.c_contiguous:
         data = np.ascontiguousarray(data)
     self.logger.debug("Data array c contiguous: {}".format(data.flags.c_contiguous))
+
+    cdef unsigned int rows_per_strip
     if "rows_per_strip" in options:#
-      key_data = options["rows_per_strip"]
-      assert isinstance(key_data, np.ndarray)
-      ctiff.TIFFSetField(self.tiff_handle, ROWSPERSTRIP, key_data.data[0])
+      rows_per_strip = options["rows_per_strip"]
+      ctiff.TIFFSetField(self.tiff_handle, ROWSPERSTRIP, rows_per_strip)
     else:
       ctiff.TIFFSetField(self.tiff_handle, ROWSPERSTRIP, ctiff.TIFFDefaultStripSize(self.tiff_handle, data.shape[1])) # rows per strip, use tiff function for estimate
     cdef np.ndarray row
