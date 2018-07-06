@@ -386,7 +386,8 @@ cdef class Tiff:
   cdef ctiff.TIFF* tiff_handle
   cdef public short samples_per_pixel
   cdef short[:] n_bits_view
-  cdef short sample_format, n_pages, extra_samples, _write_mode_n_pages
+  cdef unsigned short[:] extra_samples
+  cdef short sample_format, n_pages, _write_mode_n_pages
   cdef bool closed, cached, _unsaved_page
   cdef unsigned int image_width, image_length, tile_width, tile_length
   cdef object cache, logger
@@ -423,30 +424,43 @@ cdef class Tiff:
     self.samples_per_pixel = 1
     err = ctiff.TIFFGetField(self.tiff_handle, SAMPLES_PER_PIXEL, &self.samples_per_pixel)
     if err != 1:
-        self.logger.warn("Could not read samples per pixel tag! 1 is assumed!")
+        self.logger.warn("[FAIL] Could not read samples per pixel tag! 1 is assumed!")
         self.samples_per_pixel = 1
+    self.logger.debug("[SUCCESS] read samples per pixel: {}".format(self.samples_per_pixel))
     cdef np.ndarray[np.int16_t, ndim=1] bits_buffer = np.zeros(self.samples_per_pixel, dtype=np.int16)
     err = ctiff.TIFFGetField(self.tiff_handle, BITSPERSAMPLE, <ctiff.ttag_t*>bits_buffer.data)
     if err != 1:
-        self.logger.warn("Could not read bits per sample tag!")
+        self.logger.warn("[FAIL] Could not read bits per sample tag!")
     self.n_bits_view = bits_buffer
+    self.logger.debug("[SUCCESS] read bits per sample")
 
     self.sample_format = 1
     ctiff.TIFFGetField(self.tiff_handle, SAMPLE_FORMAT, &self.sample_format)
+    self.logger.debug("[SUCCESS] read sample format")
 
     ctiff.TIFFGetField(self.tiff_handle, IMAGEWIDTH, &self.image_width)
+    self.logger.debug("[SUCCESS] read image width")
     ctiff.TIFFGetField(self.tiff_handle, IMAGELENGTH, &self.image_length)
+    self.logger.debug("[SUCCESS] read image length")
 
     ctiff.TIFFGetField(self.tiff_handle, TILEWIDTH, &self.tile_width)
+    self.logger.debug("[SUCCESS] read tile width")
     ctiff.TIFFGetField(self.tiff_handle, TILELENGTH, &self.tile_length)
+    self.logger.debug("[SUCCESS] read tile length")
 
     # get extra samples
-    cdef np.ndarray[np.int16_t, ndim=1] extra = -np.ones(self.samples_per_pixel, dtype=np.int16)
-    ctiff.TIFFGetField(self.tiff_handle, EXTRA_SAMPLES, <short *>extra.data)
-    self.extra_samples = 0
-    for i in range(self.samples_per_pixel):
-      if extra[i] != -1:
-        self.extra_samples += 1
+    cdef unsigned short* _extra = NULL
+    cdef unsigned short nextra;
+
+    err = ctiff.TIFFGetField(self.tiff_handle, EXTRA_SAMPLES, &nextra, &_extra)
+    self.logger.debug("[SUCCESS] read extra samples #{}, err: {}".format(nextra, err))
+    if err == 1:
+        self.extra_samples = np.zeros(nextra, dtype=np.uint16)
+        for i in range(nextra):
+            self.extra_samples[i] = _extra[i]
+    else:
+        self.extra_samples = np.zeros(0, dtype=np.uint16)
+    self.logger.debug("[SUCCESS] read extra samples {}".format(np.asarray(self.extra_samples)))
 
     self.cached = False
 
@@ -589,7 +603,7 @@ cdef class Tiff:
 
   @property
   def n_samples(self):
-    cdef short samples_in_file = self.samples_per_pixel - self.extra_samples
+    cdef short samples_in_file = self.samples_per_pixel - self.extra_samples.size
     return samples_in_file
 
   def is_tiled(self):
@@ -1201,7 +1215,7 @@ cdef class Tiff:
         if planarconfig == 2:
             return ctiff.TIFFNumberOfTiles(self.tiff_handle) * self.samples_per_pixel
     elif tag == TIFF_TAGS_REVERSE["extra_samples"]:
-        return self.extra_samples
+        return self.extra_samples.size
     else:
         return None
 

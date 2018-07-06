@@ -1,4 +1,4 @@
-from pytiff import *
+from pytiff import Tiff
 import pytest
 import pickle
 import sys
