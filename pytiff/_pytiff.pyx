@@ -462,6 +462,9 @@ cdef class Tiff:
         self.extra_samples = np.zeros(0, dtype=np.uint16)
     self.logger.debug("[SUCCESS] read extra samples {}".format(np.asarray(self.extra_samples)))
 
+    # read tags for new page
+    self.read_tags()
+
     self.cached = False
 
   def __reduce__(self):
@@ -477,7 +480,11 @@ cdef class Tiff:
   @property
   def description(self):
     """Returns the image description. If not available, returns None."""
-    return self.tags["image_description"]
+    if "image_description" in self.tags:
+        desc = self.tags["image_description"]
+    else:
+        desc = None
+    return desc
 
   def close(self):
     """Close the filehandle."""
