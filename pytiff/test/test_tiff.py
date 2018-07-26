@@ -124,6 +124,17 @@ def test_multi_page():
             assert tif.mode == MODE[i]
             assert tif.dtype == TYPE[i]
 
+def test_multi_page_generator():
+    with Tiff(MULTI_PAGE) as tif:
+        for i, page in enumerate(tif.pages):
+            assert i == page.current_page
+            assert page.size[:2] == SIZE[i]
+            assert page.mode == MODE[i]
+            assert page.dtype == TYPE[i]
+        with pytest.raises(SinglePageError):
+            page.set_page(0)
+
+
 def test_generator_multi_page():
     with Tiff(MULTI_PAGE) as tif:
         for i, page in enumerate(tif):

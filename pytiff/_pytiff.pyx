@@ -341,6 +341,10 @@ class NotTiledError(Exception):
   def __init__(self, message):
     self.message = message
 
+class SinglePageError(Exception):
+  def __init__(self):
+      self.message = "Changing pages is disabled for this object."
+
 cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp, short n_samples):
   shape = (inp.shape[0], inp.shape[1], n_samples)
   cdef np.ndarray[np.uint8_t, ndim=3] rgb = np.zeros(shape, np.uint8)
@@ -395,6 +399,7 @@ cdef class Tiff:
   cdef object file_mode
   cdef public object tags
   cdef _dtype_write
+  cdef object _singlepage
 
   def __cinit__(self, filename, file_mode="r", bigtiff=False):
     if bigtiff:
@@ -406,6 +411,7 @@ cdef class Tiff:
     self.file_mode = tmp_mode
     self._write_mode_n_pages = 0
     self.n_pages = 0
+    self._singlepage = False
     self.tiff_handle = ctiff.TIFFOpen(tmp_filename.c_str(), tmp_mode.c_str())
     if self.tiff_handle is NULL:
       raise IOError("file not found!")
@@ -575,6 +581,8 @@ cdef class Tiff:
     Args:
       value (int): page index
     """
+    if self._singlepage:
+        raise SinglePageError()
     ctiff.TIFFSetDirectory(self.tiff_handle, value)
     self._init_page()
 
@@ -1225,4 +1233,18 @@ cdef class Tiff:
         return self.extra_samples.size
     else:
         return None
+
+  @property
+  def pages(self):
+      current = 0
+      mode = "r"
+      # use bigtiff if original file is opened as bigtiff
+      if "8" in self.file_mode:
+          mode += "8"
+      while current < self.number_of_pages:
+        page = Tiff(self.filename, mode)
+        page.set_page(current)
+        current += 1
+        page._singlepage = True
+        yield page
 
