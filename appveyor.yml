@@ -97,8 +97,7 @@ install:
   # pip will build them from source using the MSVC compiler matching the
   # target Python version and architecture
   #- "%CMD_IN_ENV% pip install -r dev-requirements.txt"
-  - "conda install -y libtiff numpy cython scikit-image"
-  - "pip install twine"
+  - "conda install -y libtiff numpy cython scikit-image twine"
     #- "pip install pytest pytest-cov hypothesis tifffile"
 
   - "copy %MINICONDA%\\Library\\lib\\tiff.lib ."
