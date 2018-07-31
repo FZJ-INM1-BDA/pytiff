@@ -7,4 +7,5 @@ try:
     from ._pytiff import tiff_version, tiff_version_raw
 except ImportError as e:
     print("Cython modules not available")
+
 from pytiff._version import __version__

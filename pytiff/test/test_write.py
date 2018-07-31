@@ -40,6 +40,20 @@ def test_write_int_scanline(data, tmpdir_factory):
 
 @settings(buffer_size=11000000)
 @given(data=hnp.arrays(dtype=st.one_of(hnp.integer_dtypes(endianness="="), hnp.unsigned_integer_dtypes(endianness="=")),
+    shape=hnp.array_shapes(min_dims=2, max_dims=2, min_side=10, max_side=50)))
+def test_write_int_scanline_set_rows_per_strip(data, tmpdir_factory):
+    filename = str(tmpdir_factory.mktemp("write").join("int_img.tif"))
+    rows_per_strip = 1
+    with Tiff(filename, "w") as handle:
+        handle.write(data, method="scanline", rows_per_strip=rows_per_strip)
+
+    with tifffile.TiffFile(filename) as handle:
+        img = handle.asarray()
+        np.testing.assert_array_equal(data, img)
+        assert rows_per_strip == handle[0].tags["rows_per_strip"].value
+
+@settings(buffer_size=11000000)
+@given(data=hnp.arrays(dtype=st.one_of(hnp.integer_dtypes(endianness="="), hnp.unsigned_integer_dtypes(endianness="=")),
     shape=hnp.array_shapes(min_dims=2, max_dims=2, min_side=20, max_side=20)))
 def test_write_int_slices_scanline(data, tmpdir_factory):
     filename = str(tmpdir_factory.mktemp("write").join("int_img_scanline.tif"))
