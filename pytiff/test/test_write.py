@@ -107,7 +107,6 @@ def test_append_int_tile(data, tmpdir_factory):
         np.testing.assert_array_equal(data, img[0])
         np.testing.assert_array_equal(data, img[1])
 
-@settings(buffer_size=11000000)
 def test_write_chunk(tmpdir_factory):
     filename = str(tmpdir_factory.mktemp("write").join("chunk_img.tif"))
     filename = "test_chunk.tif"
@@ -149,7 +148,6 @@ def test_write_chunk(tmpdir_factory):
             handle[:, :] = np.random.rand(50, 50)
             handle.save_page()
 
-@settings(buffer_size=11000000)
 def test_write_chunk_multiple_pages(tmpdir_factory):
     filename = str(tmpdir_factory.mktemp("write").join("multi_page_chunk_img.tif"))
     data1 = np.ones((64,64), dtype=np.uint8) * 1

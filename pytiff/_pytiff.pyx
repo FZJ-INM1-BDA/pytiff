@@ -16,6 +16,7 @@ import re
 from pytiff._version import _package
 import sys
 import copy
+from enum import IntEnum
 PY3 = sys.version_info[0] == 3
 
 TYPE_MAP = {
@@ -229,11 +230,13 @@ TIFF_TAGS_REVERSE = {
     # code: (attribute name, default value, type, count, validator)
 }
 
+tags = IntEnum("tags", names=TIFF_TAGS_REVERSE)
+
 TIFF_TAGS_NOT_WRITABLE = [
-        "tile_offsets",
-        "tile_byte_counts",
-        "strip_byte_counts",
-        "strip_offsets"
+        tags["tile_offsets"],
+        tags["tile_byte_counts"],
+        tags["strip_byte_counts"],
+        tags["strip_offsets"]
         ]
 
 # the data types to the corresponding type in TIFF_TAGS
@@ -307,25 +310,10 @@ cdef _to_view(void* pointer, dtype, size):
             ar[i] = (<double*> pointer)[i]
     return ar
 
-cdef unsigned int BITSPERSAMPLE = 258
-cdef unsigned int COMPRESSION = 259
-cdef unsigned int EXTRA_SAMPLES = 338
-cdef unsigned int IMAGELENGTH = 257
-cdef unsigned int IMAGEWIDTH = 256
-cdef unsigned int IMAGE_DESCRIPTION = 270
 cdef unsigned int MIN_IS_BLACK = 1
 cdef unsigned int MIN_IS_WHITE = 0
 cdef unsigned int NO_COMPRESSION = 1
-cdef unsigned int PHOTOMETRIC = 262
-cdef unsigned int PLANARCONFIG = 284
 cdef unsigned int RGB = 2
-cdef unsigned int ROWSPERSTRIP = 278
-cdef unsigned int SAMPLES_PER_PIXEL = 277
-cdef unsigned int SAMPLE_FORMAT = 339
-cdef unsigned int TILELENGTH = 323
-cdef unsigned int TILEWIDTH = 322
-cdef unsigned int TILE_LENGTH = 323
-cdef unsigned int TILE_WIDTH =322
 
 def tiff_version_raw():
   """Return the raw version string of libtiff."""
@@ -428,37 +416,37 @@ cdef class Tiff:
     """Initialize page specific attributes."""
     self.logger.debug("_init_page called.")
     self.samples_per_pixel = 1
-    err = ctiff.TIFFGetField(self.tiff_handle, SAMPLES_PER_PIXEL, &self.samples_per_pixel)
+    err = ctiff.TIFFGetField(self.tiff_handle, tags.samples_per_pixel, &self.samples_per_pixel)
     if err != 1:
         self.logger.warn("[FAIL] Could not read samples per pixel tag! 1 is assumed!")
         self.samples_per_pixel = 1
     self.logger.debug("[SUCCESS] read samples per pixel: {}".format(self.samples_per_pixel))
     cdef np.ndarray[np.int16_t, ndim=1] bits_buffer = np.zeros(self.samples_per_pixel, dtype=np.int16)
-    err = ctiff.TIFFGetField(self.tiff_handle, BITSPERSAMPLE, <ctiff.ttag_t*>bits_buffer.data)
+    err = ctiff.TIFFGetField(self.tiff_handle, tags.bits_per_sample, <ctiff.ttag_t*>bits_buffer.data)
     if err != 1:
         self.logger.warn("[FAIL] Could not read bits per sample tag!")
     self.n_bits_view = bits_buffer
     self.logger.debug("[SUCCESS] read bits per sample")
 
     self.sample_format = 1
-    ctiff.TIFFGetField(self.tiff_handle, SAMPLE_FORMAT, &self.sample_format)
+    ctiff.TIFFGetField(self.tiff_handle, tags.sample_format, &self.sample_format)
     self.logger.debug("[SUCCESS] read sample format")
 
-    ctiff.TIFFGetField(self.tiff_handle, IMAGEWIDTH, &self.image_width)
+    ctiff.TIFFGetField(self.tiff_handle, tags.image_width, &self.image_width)
     self.logger.debug("[SUCCESS] read image width")
-    ctiff.TIFFGetField(self.tiff_handle, IMAGELENGTH, &self.image_length)
+    ctiff.TIFFGetField(self.tiff_handle, tags.image_length, &self.image_length)
     self.logger.debug("[SUCCESS] read image length")
 
-    ctiff.TIFFGetField(self.tiff_handle, TILEWIDTH, &self.tile_width)
+    ctiff.TIFFGetField(self.tiff_handle, tags.tile_width, &self.tile_width)
     self.logger.debug("[SUCCESS] read tile width")
-    ctiff.TIFFGetField(self.tiff_handle, TILELENGTH, &self.tile_length)
+    ctiff.TIFFGetField(self.tiff_handle, tags.tile_length, &self.tile_length)
     self.logger.debug("[SUCCESS] read tile length")
 
     # get extra samples
     cdef unsigned short* _extra = NULL
     cdef unsigned short nextra;
 
-    err = ctiff.TIFFGetField(self.tiff_handle, EXTRA_SAMPLES, &nextra, &_extra)
+    err = ctiff.TIFFGetField(self.tiff_handle, tags.extra_samples, &nextra, &_extra)
     self.logger.debug("[SUCCESS] read extra samples #{}, err: {}".format(nextra, err))
     if err == 1:
         self.extra_samples = np.zeros(nextra, dtype=np.uint16)
@@ -470,7 +458,6 @@ cdef class Tiff:
 
     # read tags for new page
     self.read_tags()
-
     self.cached = False
 
   def __reduce__(self):
@@ -486,8 +473,8 @@ cdef class Tiff:
   @property
   def description(self):
     """Returns the image description. If not available, returns None."""
-    if "image_description" in self.tags:
-        desc = self.tags["image_description"]
+    if tags.image_description in self.tags:
+        desc = self.tags[tags.image_description]
     else:
         desc = None
     return desc
@@ -825,15 +812,15 @@ cdef class Tiff:
         samples_per_pixel = data.shape[2]
     sample_format, nbits = INVERSE_TYPE_MAP[data.dtype]
 
-    ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
-    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, samples_per_pixel)
-    ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
-    ctiff.TIFFSetField(self.tiff_handle, IMAGELENGTH, data.shape[0])
-    ctiff.TIFFSetField(self.tiff_handle, IMAGEWIDTH, data.shape[1])
-    ctiff.TIFFSetField(self.tiff_handle, SAMPLE_FORMAT, sample_format)
-    ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
-    ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
-    ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
+    ctiff.TIFFSetField(self.tiff_handle, tags.orientation, 1) # Image orientation , top left
+    ctiff.TIFFSetField(self.tiff_handle, tags.samples_per_pixel, samples_per_pixel)
+    ctiff.TIFFSetField(self.tiff_handle, tags.bits_per_sample, nbits)
+    ctiff.TIFFSetField(self.tiff_handle, tags.image_length, data.shape[0])
+    ctiff.TIFFSetField(self.tiff_handle, tags.image_width, data.shape[1])
+    ctiff.TIFFSetField(self.tiff_handle, tags.sample_format, sample_format)
+    ctiff.TIFFSetField(self.tiff_handle, tags.compression, compression) # compression, 1 == no compression
+    ctiff.TIFFSetField(self.tiff_handle, tags.photometric, photometric) # photometric, minisblack
+    ctiff.TIFFSetField(self.tiff_handle, tags.planar_configuration, planar_config) # planarconfig, contiguous not needed for gray
     self.logger.debug("Write config: {} bits per sample, {} samples per pixel, {} x {} image size".format(nbits,
         samples_per_pixel, data.shape[0], data.shape[1]))
     self.logger.debug("Type of input data: {}, max value: {} min value: {} C contiguous: {}".format(data.dtype, data.max(), data.min(), data.flags.c_contiguous))
@@ -852,8 +839,8 @@ cdef class Tiff:
     tile_width = options.get("tile_width", 240)
     self.logger.debug("Writing tiles of size {} x {}".format(tile_length, tile_width))
 
-    ctiff.TIFFSetField(self.tiff_handle, TILE_LENGTH, tile_length)
-    ctiff.TIFFSetField(self.tiff_handle, TILE_WIDTH, tile_width)
+    ctiff.TIFFSetField(self.tiff_handle, tags.tile_length, tile_length)
+    ctiff.TIFFSetField(self.tiff_handle, tags.tile_width, tile_width)
 
     cdef np.ndarray buffer
     n_tile_rows = int(np.ceil(data.shape[0] / float(tile_length)))
@@ -882,7 +869,7 @@ cdef class Tiff:
       if not data.flags.c_contiguous:
           data = np.ascontiguousarray(data)
       self.logger.debug("Data array c contiguous: {}".format(data.flags.c_contiguous))
-      ctiff.TIFFSetField(self.tiff_handle, 278, ctiff.TIFFDefaultStripSize(self.tiff_handle, data.shape[1])) # rows per strip, use tiff function for estimate
+      ctiff.TIFFSetField(self.tiff_handle, tags.rows_per_strip, ctiff.TIFFDefaultStripSize(self.tiff_handle, data.shape[1])) # rows per strip, use tiff function for estimate
       cdef np.ndarray row
       for i in range(data.shape[0]):
         row = data[i]
@@ -927,18 +914,18 @@ cdef class Tiff:
     tile_width = options.get("tile_width", 256)
     self.tile_length = tile_length
     self.tile_width = tile_width
-    ctiff.TIFFSetField(self.tiff_handle, TILELENGTH, tile_length)
-    ctiff.TIFFSetField(self.tiff_handle, TILEWIDTH, tile_width)
+    ctiff.TIFFSetField(self.tiff_handle, tags.tile_length, tile_length)
+    ctiff.TIFFSetField(self.tiff_handle, tags.tile_width, tile_width)
 
-    ctiff.TIFFSetField(self.tiff_handle, 274, 1) # Image orientation , top left
-    ctiff.TIFFSetField(self.tiff_handle, SAMPLES_PER_PIXEL, 1)
-    ctiff.TIFFSetField(self.tiff_handle, BITSPERSAMPLE, nbits)
-    ctiff.TIFFSetField(self.tiff_handle, IMAGELENGTH, length)
-    ctiff.TIFFSetField(self.tiff_handle, IMAGEWIDTH, width)
-    ctiff.TIFFSetField(self.tiff_handle, SAMPLE_FORMAT, sample_format)
-    ctiff.TIFFSetField(self.tiff_handle, COMPRESSION, compression) # compression, 1 == no compression
-    ctiff.TIFFSetField(self.tiff_handle, PHOTOMETRIC, photometric) # photometric, minisblack
-    ctiff.TIFFSetField(self.tiff_handle, PLANARCONFIG, planar_config) # planarconfig, contiguous not needed for gray
+    ctiff.TIFFSetField(self.tiff_handle, tags.orientation, 1) # Image orientation , top left
+    ctiff.TIFFSetField(self.tiff_handle, tags.samples_per_pixel, 1)
+    ctiff.TIFFSetField(self.tiff_handle, tags.bits_per_sample, nbits)
+    ctiff.TIFFSetField(self.tiff_handle, tags.image_length, length)
+    ctiff.TIFFSetField(self.tiff_handle, tags.image_width, width)
+    ctiff.TIFFSetField(self.tiff_handle, tags.sample_format, sample_format)
+    ctiff.TIFFSetField(self.tiff_handle, tags.compression, compression) # compression, 1 == no compression
+    ctiff.TIFFSetField(self.tiff_handle, tags.photometric, photometric) # photometric, minisblack
+    ctiff.TIFFSetField(self.tiff_handle, tags.planar_configuration, planar_config) # planarconfig, contiguous not needed for gray
     self._unsaved_page = True
 
   def __setitem__(self, key, item):
@@ -1014,7 +1001,7 @@ cdef class Tiff:
     """
     if self.file_mode != "r":
         raise Exception("Tag reading is only supported in read mode")
-    tags = {}
+    _tags = {}
     for key in TIFF_TAGS:
         attribute_name, default_value, data_type, count = TIFF_TAGS[key]
 
@@ -1038,10 +1025,10 @@ cdef class Tiff:
           if attribute_name == "bits_per_sample":
               self.logger.debug("convert bits per sample to an array of length samples per pixel")
               value = np.ones(self.samples_per_pixel, dtype=np.uint16) * value[0]
-          tags[attribute_name] = copy.deepcopy(value)
+          _tags[tags[attribute_name]] = copy.deepcopy(value)
 
-    self.tags = tags
-    return tags
+    self.tags = _tags
+    return _tags
 
   def _read_tag(self, tag, data_type, count):
     """ reads a single attribute from a Tiff File
@@ -1084,7 +1071,7 @@ cdef class Tiff:
 
     # another special case is the page number
     # TIFFGetField expects two shorts and not a pointer
-    if tag == TIFF_TAGS_REVERSE["page_number"]:
+    if tag == tags.page_number:
         data = np.zeros(count, dtype=data_type)
         err = ctiff.TIFFGetField(self.tiff_handle, tag, &page , &n_pages)
         data[0] = page
@@ -1121,7 +1108,7 @@ cdef class Tiff:
       str = None
     return str, err
 
-  def set_tags(self, **kwargs):
+  def set_tags(self, tagdict=None, **kwargs):
     """ writes the tag/value pairs in the dict to the Tiff File
 
         Tags must be written before image data is written to the current page.
@@ -1137,8 +1124,14 @@ cdef class Tiff:
     """
     if self.file_mode == "r":
         raise Exception("Tag writing is not supported in read mode")
+    kwargs.update(tagdict)
 
-    for key in kwargs:
+    for _key in kwargs:
+      if isinstance(_key, str):
+          key = tags[_key]
+      else:
+          key = _key
+
       if key in TIFF_TAGS_NOT_WRITABLE:
           continue
       self._set_tag(key, kwargs[key])
@@ -1159,12 +1152,12 @@ cdef class Tiff:
     cdef unsigned char page, total_pages
     cdef float fval
     if type(tag) == int:
-      tag = tag
-    else:
-        tag = TIFF_TAGS_REVERSE[tag]
+      tag = tags(tag)
+    elif isinstance(tag, str):
+        tag = tags[tag]
 
     # special case for page number, same as for reading the tag
-    if TIFF_TAGS_REVERSE["page_number"] == tag:
+    if tags.page_number == tag:
       page = value[0]
       total_pages = value[1]
       err = ctiff.TIFFSetField(self.tiff_handle, tag, page, total_pages)
@@ -1207,7 +1200,7 @@ cdef class Tiff:
 
   def _value_count(self, tag):
     cdef short planarconfig
-    ctiff.TIFFGetField(self.tiff_handle, PLANARCONFIG, &planarconfig)
+    ctiff.TIFFGetField(self.tiff_handle, tags.planar_configuration, &planarconfig)
     pool_samples_per_pixel = [
             TIFF_TAGS_REVERSE["bits_per_sample"],
             TIFF_TAGS_REVERSE["min_sample_value"],
