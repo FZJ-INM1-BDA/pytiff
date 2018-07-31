@@ -135,7 +135,7 @@ def check_written_tags(written_tags, tags):
             continue
         # skip sample_format if set to default value
         if k.name == "sample_format":
-            if written_tags[k].shape[0] == 1 and written_tags[k].item(0) == 1:
+            if written_tags[k] == 1:
                 continue
         if isinstance(written_tags[k], np.ndarray):
             assert np.all(written_tags[k] == tags[k]), "*** failed for {} ***".format(k.name)
@@ -150,7 +150,7 @@ def compare_tags(pytiff_tags, tifffile_tags):
             value = value.decode()
             assert value == pytiff_tags[pytiff.tags[name]], "key {}: {} == {}".format(name, value, pytiff_tags[pytiff.tags[name]])
         elif name == "x_resolution" or name == "y_resolution":
-            assert value[0] / value[1] == pytiff_tags[pytiff.tags[name]][0]
+            assert value[0] / value[1] == pytiff_tags[pytiff.tags[name]]
         else:
             value = np.array([value])
             value.squeeze()

@@ -388,6 +388,7 @@ cdef class Tiff:
   cdef public object tags
   cdef _dtype_write
   cdef object _singlepage
+  cdef object _pages
 
   def __cinit__(self, filename, file_mode="r", bigtiff=False):
     if bigtiff:
@@ -400,6 +401,7 @@ cdef class Tiff:
     self._write_mode_n_pages = 0
     self.n_pages = 0
     self._singlepage = False
+    self._pages = None
     self.tiff_handle = ctiff.TIFFOpen(tmp_filename.c_str(), tmp_mode.c_str())
     if self.tiff_handle is NULL:
       raise IOError("file not found!")
@@ -483,6 +485,9 @@ cdef class Tiff:
     """Close the filehandle."""
     if not self.closed:
       self.logger.debug("Closing file manually. file: {}".format(self.filename))
+      if self._pages is not None:
+        for p in self._pages:
+            p.close()
       ctiff.TIFFClose(self.tiff_handle)
       self.closed = True
       return
@@ -490,6 +495,9 @@ cdef class Tiff:
   def __dealloc__(self):
     if not self.closed:
       self.logger.debug("Closing file automatically. file: {}".format(self.filename))
+      if self._pages is not None:
+          for p in self._pages:
+              p.close()
       ctiff.TIFFClose(self.tiff_handle)
 
   @property
@@ -621,11 +629,6 @@ cdef class Tiff:
 
   def __exit__(self, type, value, traceback):
     self.close()
-
-  def __iter__(self):
-    for i in range(self.number_of_pages):
-      self.set_page(i)
-      yield self
 
   def _load_all(self):
     """Load the image at once.
@@ -1033,8 +1036,9 @@ cdef class Tiff:
               value = np.ones(self.samples_per_pixel, dtype=np.uint16) * value[0]
           _tags[tags[attribute_name]] = copy.deepcopy(value)
 
-    self.tags = _tags
-    return _tags
+    self.tags = TagDict()
+    self.tags.update(_tags)
+    return self.tags
 
   def _read_tag(self, tag, data_type, count):
     """ reads a single attribute from a Tiff File
@@ -1235,15 +1239,33 @@ cdef class Tiff:
 
   @property
   def pages(self):
+    if self._pages is None:
+      self._pages = []
       current = 0
       mode = "r"
       # use bigtiff if original file is opened as bigtiff
       if "8" in self.file_mode:
           mode += "8"
       while current < self.number_of_pages:
-        page = Tiff(self.filename, mode)
-        page.set_page(current)
-        current += 1
-        page._singlepage = True
-        yield page
+          page = Tiff(self.filename, mode)
+          page.set_page(current)
+          current += 1
+          page._singlepage = True
+          self._pages.append(page)
+    return self._pages
+
+class TagDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(TagDict, self).__init__(*args, **kwargs)
+
+    def __getitem__(self, key):
+        res = super(TagDict, self).get(key, None)
+        try:
+            length = len(res)
+        except:
+            length = 2
+        if length == 1:
+            res = res[0]
+
+        return res
 

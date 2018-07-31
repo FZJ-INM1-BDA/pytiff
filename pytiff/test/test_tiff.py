@@ -134,14 +134,6 @@ def test_multi_page_generator():
         with pytest.raises(SinglePageError):
             page.set_page(0)
 
-
-def test_generator_multi_page():
-    with Tiff(MULTI_PAGE) as tif:
-        for i, page in enumerate(tif):
-            assert page.size[:2] == SIZE[i]
-            assert page.mode == MODE[i]
-            assert page.dtype == TYPE[i]
-
 def test_shape():
     with Tiff(TILED_GREY) as tif:
         assert len(tif.shape) == 2
