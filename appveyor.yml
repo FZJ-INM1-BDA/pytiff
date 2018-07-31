@@ -1,3 +1,7 @@
+branches:
+    only:
+        - master
+
 environment:
   skip_non_tags: true
 

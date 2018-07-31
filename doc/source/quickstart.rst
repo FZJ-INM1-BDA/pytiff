@@ -55,14 +55,14 @@ The following code returns a numpy array with the shape (100, 200).
 Reading a multipage tiff file
 -----------------------------
 
-A multipage tiff file can be read by iterating over the pages. This can either be done using the tif object as a generator:
+A multipage tiff file can be read by iterating over the pages. The `pages` attribute returns a list of pages:
 
 .. code:: python
 
   import pytiff
 
   with pytiff.Tiff("test_data/multi_page.tif") as handle:
-    for page in handle:
+    for page in handle.pages:
       print("Current shape: {}".format(handle.shape))
       current_page = handle[:]
 
@@ -77,8 +77,6 @@ or manually:
       handle.set_page(p)
       print("Current shape: {}".format(handle.shape))
       current_page = handle[:]
-
-Note that in both cases the "handle" object is set to the last page.
 
 -------------------
 Writing a tiff file
@@ -134,8 +132,7 @@ A tiff file can contain many tags. Pytiff supports reading and writing baseline 
 
     import pytiff
     with pytiff.Tiff("test_data/small_example.tif") as handle:
-      tags = handle.read_tags()
-      for k in tags: # or handle.tags
+      for k in handle.tags:
         print("{key}: {value}".format(key=k, value=tags[k]))
 
 Writing tags has to be done before image data is written to the current page.
@@ -146,6 +143,8 @@ Writing tags has to be done before image data is written to the current page.
     with pytiff.Tiff("test_data/tmp.tif", "w") as handle:
       handle.set_tags(image_description="Image description")
       handle.write(data)
+
+All available tags can be found at `pytiff.tags`.
 
 ----------------
 More information
