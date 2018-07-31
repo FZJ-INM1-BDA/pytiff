@@ -13,8 +13,8 @@ __all__ = [
 ]
 
 VERSION_MAJOR = 0
-VERSION_MINOR = 7
-VERSION_PATCH = 7
+VERSION_MINOR = 8
+VERSION_PATCH = 0
 
 VERSION_STRING = "{major}.{minor}.{patch}".format(major=VERSION_MAJOR, minor=VERSION_MINOR, patch=VERSION_PATCH)
 
