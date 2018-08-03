@@ -74,7 +74,7 @@ Reading:
 import pytiff
 
 with pytiff.Tiff("test_data/small_example_tiled.tif") as handle:
-  part = f[100:200, :]
+  part = handle[100:200, :]
 ```
 
 Writing data from `pages` into a multipage tiff:
