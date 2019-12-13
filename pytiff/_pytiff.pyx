@@ -1103,17 +1103,17 @@ cdef class Tiff:
     return data, err
 
   def _read_ascii(self, tag):
-    """ reads an ascii string from a Tiff File
+    """ reads an ascii bytestring from a Tiff File
 
         Args:
             tag (integer): the attribute tag
 
         Returns:
-            the attribute (string)
+            the attribute (bytestring)
     """
     cdef char* desc = ''
     err = ctiff.TIFFGetField(self.tiff_handle, tag, &desc)
-    str = <string>desc
+    str = <bytes>desc
     if str == "":
       str = None
     return str, err
