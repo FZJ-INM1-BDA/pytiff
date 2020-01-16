@@ -1247,7 +1247,7 @@ cdef class Tiff:
       if "8" in self.file_mode:
           mode += "8"
       while current < self.number_of_pages:
-          page = Tiff(self.filename, mode)
+          page = Tiff(self.filename, mode, encoding=self.encoding)
           page.set_page(current)
           current += 1
           page._singlepage = True
