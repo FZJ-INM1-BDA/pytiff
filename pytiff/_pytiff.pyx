@@ -389,13 +389,15 @@ cdef class Tiff:
   cdef _dtype_write
   cdef object _singlepage
   cdef object _pages
+  cdef object encoding
 
-  def __cinit__(self, filename, file_mode="r", bigtiff=False):
+  def __cinit__(self, filename, file_mode="r", bigtiff=False, encoding="ascii"):
     if bigtiff:
       file_mode += "8"
     tmp_filename = <string> filename
     tmp_mode = <string> file_mode
     self.closed = True
+    self.encoding = encoding
     self.filename = tmp_filename
     self.file_mode = tmp_mode
     self._write_mode_n_pages = 0
@@ -1103,17 +1105,18 @@ cdef class Tiff:
     return data, err
 
   def _read_ascii(self, tag):
-    """ reads an ascii bytestring from a Tiff File
+    """ reads a string from a Tiff File
 
         Args:
             tag (integer): the attribute tag
 
         Returns:
-            the attribute (bytestring)
+            the attribute (string)
     """
     cdef char* desc = ''
     err = ctiff.TIFFGetField(self.tiff_handle, tag, &desc)
-    str = <bytes>desc
+    bytes_desc = <bytes>desc
+    str = bytes_desc.decode(self.encoding)
     if str == "":
       str = None
     return str, err
@@ -1174,11 +1177,8 @@ cdef class Tiff:
       return
     if isinstance(value, str):
       value = value + "\0"
-      if PY3:
-         py_byte_string = value.encode()
-         char_ptr = py_byte_string
-      else:
-         char_ptr = value
+      py_byte_string = value.encode(self.encoding)
+      char_ptr = py_byte_string
       err = ctiff.TIFFSetField(self.tiff_handle, tag, char_ptr)
       return
     else:
