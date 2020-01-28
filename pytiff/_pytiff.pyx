@@ -1,4 +1,4 @@
-#cython: c_string_type=str, c_string_encoding=ascii
+#cython: c_string_type=str, c_string_encoding=ascii, language_level=2
 """
 pytiff is a python wrapper for the libtiff c api written in cython. It is python 2 and 3 compatible.
 While there are some missing features, it supports reading chunks of tiled greyscale tif images as well as basic reading for color images.
@@ -350,8 +350,8 @@ cdef _get_rgb(np.ndarray[np.uint32_t, ndim=2] inp, short n_samples):
   return rgb
 
 cpdef object rebuild(data):
-    filename, file_mode, bigtiff, current_page = data
-    obj = Tiff(filename, file_mode, bigtiff)
+    filename, file_mode, bigtiff, encoding, current_page = data
+    obj = Tiff(filename, file_mode, bigtiff, encoding)
     obj.set_page(current_page)
     return obj
 
@@ -374,6 +374,7 @@ cdef class Tiff:
     filename (string): The filename of the tiff file.
     file_mode (string): File mode either "w" for writing (old data is deleted), "a" for appending or "r" for reading. Default: "r".
     bigiff (bool): If True the file is assumed to be bigtiff. Default: False.
+    encoding (string): Optional string encoding name to enable Unicode support for "ascii" tags. Default: None (ascii tags are always bytes).
   """
   cdef ctiff.TIFF* tiff_handle
   cdef public short samples_per_pixel
@@ -385,21 +386,21 @@ cdef class Tiff:
   cdef object cache, logger
   cdef public object filename
   cdef object file_mode
+  cdef public object encoding
   cdef public object tags
   cdef _dtype_write
   cdef object _singlepage
   cdef object _pages
-  cdef object encoding
 
-  def __cinit__(self, filename, file_mode="r", bigtiff=False, encoding="ascii"):
+  def __cinit__(self, filename, file_mode="r", bigtiff=False, encoding=None):
     if bigtiff:
       file_mode += "8"
     tmp_filename = <string> filename
     tmp_mode = <string> file_mode
     self.closed = True
-    self.encoding = encoding
     self.filename = tmp_filename
     self.file_mode = tmp_mode
+    self.encoding = encoding
     self._write_mode_n_pages = 0
     self.n_pages = 0
     self._singlepage = False
@@ -471,7 +472,7 @@ cdef class Tiff:
       bigtiff = False
       if "8" in self.file_mode:
           bigtiff = True
-      data = self.filename, self.file_mode, bigtiff, self.current_page
+      data = self.filename, self.file_mode, bigtiff, self.encoding, self.current_page
       return rebuild, (data,)
 
   @property
@@ -1116,10 +1117,13 @@ cdef class Tiff:
     cdef char* desc = ''
     err = ctiff.TIFFGetField(self.tiff_handle, tag, &desc)
     bytes_desc = <bytes>desc
-    str = bytes_desc.decode(self.encoding)
-    if str == "":
-      str = None
-    return str, err
+    if self.encoding:
+      data = bytes_desc.decode(self.encoding)
+    else:
+      data = bytes_desc
+    if data == "":
+      data = None
+    return data, err
 
   def set_tags(self, tagdict=None, **kwargs):
     """ writes the tag/value pairs in the dict to the Tiff File
@@ -1175,9 +1179,20 @@ cdef class Tiff:
       total_pages = value[1]
       err = ctiff.TIFFSetField(self.tiff_handle, tag, page, total_pages)
       return
-    if isinstance(value, str):
-      value = value + "\0"
-      py_byte_string = value.encode(self.encoding)
+    if isinstance(value, bytes):
+      value += b"\0"
+      char_ptr = value
+      err = ctiff.TIFFSetField(self.tiff_handle, tag, char_ptr)
+      return
+    if isinstance(value, unicode):
+      if self.encoding:
+        py_byte_string = value.encode(self.encoding)
+      elif PY3:
+        # Backwards compatibility for old behavior (implicit encoding on PY3).
+        py_byte_string = value.encode()
+      else:
+        py_byte_string = bytes(value)
+      py_byte_string += b"\0"
       char_ptr = py_byte_string
       err = ctiff.TIFFSetField(self.tiff_handle, tag, char_ptr)
       return
