@@ -863,7 +863,15 @@ cdef class Tiff:
         to_pad = [(0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])]
         if data.ndim ==3:
             to_pad += [(0,0)]
-        buffer = np.pad(buffer, to_pad, "constant", constant_values=(0))
+
+        # Save time by only padding if necessary.
+        # Note: This implementation is faster than np.sum(to_pad) > 0, altough it is ugly.
+        if to_pad[0][0] + to_pad[0][1] + to_pad[1][0] + to_pad[1][1]:
+            buffer = np.pad(buffer, to_pad, "constant", constant_values=(0))
+        else:
+            # Pad implicitly converts the buffer to c-contiguous layout.
+            # If we do not pad, we need to make the conversion explicitly.
+            buffer = np.ascontiguousarray(buffer)
         self.logger.debug("Buffer array c contiguous: {}".format(buffer.flags.c_contiguous))
 
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x, y, 0, 0)
@@ -1001,7 +1009,16 @@ cdef class Tiff:
         x = j * tile_width
         buffer = data[y:(i+1)*tile_length, x:(j+1)*tile_width]
         buffer.astype(dtype)
-        buffer = np.pad(buffer, ((0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1])), "constant", constant_values=(0))
+        to_pad = ((0, tile_length - buffer.shape[0]), (0, tile_width - buffer.shape[1]))
+
+        # Save time by only padding if necessary.
+        # Note: This implementation is faster than np.sum(to_pad) > 0, altough it is ugly.
+        if to_pad[0][0] + to_pad[0][1] + to_pad[1][0] + to_pad[1][1] > 0:
+            buffer = np.pad(buffer, to_pad, "constant", constant_values=(0))
+        else:
+            # Pad implicitly converts the buffer to c-contiguous layout.
+            # If we do not pad, we need to make the conversion explicitly.
+            buffer = np.ascontiguousarray(buffer)
 
         ctiff.TIFFWriteTile(self.tiff_handle, <void *> buffer.data, x_chunk+x, y_chunk+y, 0, 0)
 
