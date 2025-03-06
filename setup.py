@@ -1,5 +1,4 @@
-from setuptools import setup
-from distutils.extension import Extension
+from setuptools import setup, Extension
 
 try:
     from Cython.Build import cythonize
