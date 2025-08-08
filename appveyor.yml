@@ -3,11 +3,11 @@ image: Visual Studio 2022
 branches:
   only:
     - master
+    - /[0-9]+\.[0-9]+\.[0-9]+/ # <-- allow tag builds like 0.8.2
 
 environment:
   TWINE_USERNAME: __token__
-  # Set TWINE_PASSWORD securely in AppVeyor UI (Project Settings → Environment)
-  # e.g. TWINE_PASSWORD: (secure)
+  # TWINE_PASSWORD is set securely in the AppVeyor UI
 
 init:
   - cmd: echo AppVeyor build %APPVEYOR_BUILD_NUMBER% on %APPVEYOR_REPO_BRANCH%
@@ -19,16 +19,14 @@ install:
   - python -m pip install --upgrade build twine
 
 build_script:
-  - py --version
+  - python --version
   - python -m build
 
 test_script:
-  # put your tests here, or skip if none for now
   - python -c "print('no tests configured')"
 
 artifacts:
   - path: dist\*
 
 on_success:
-  # Upload to PyPI only for tagged commits (e.g., v1.2.3)
-  - ps: if ($env:APPVEYOR_REPO_TAG -eq "true") { cmd /c "python -m twine upload dist/* -u %TWINE_USERNAME% -p %TWINE_PASSWORD%" } else { echo "Not a tag build; skipping PyPI upload." }
+  - ps: if ($env:APPVEYOR_REPO_TAG -eq "true") { cmd /c "python -m twine upload --non-interactive dist/* -u %TWINE_USERNAME% -p %TWINE_PASSWORD%" } else { echo "Not a tag build; skipping PyPI upload." }
