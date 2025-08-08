@@ -11,12 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install libtiff
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libtiff-dev
+
       - name: Build wheels (Linux, CPython)
         uses: pypa/cibuildwheel@v2.21.3
         env:
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_ARCHS_LINUX: "x86_64"
-          CIBW_OUTPUT_DIR: dist # <-- put wheels in dist/
+          CIBW_OUTPUT_DIR: dist
 
       - name: Build sdist
         run: |
@@ -29,10 +34,8 @@ jobs:
           name: dist
           path: dist/*
 
-      # production release
       - name: Publish to PyPI
-        if: startsWith(github.ref, 'refs/tags/')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
-          packages-dir: wheelhouse/
+          skip-existing: true
