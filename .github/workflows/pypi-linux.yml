@@ -11,7 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install libtiff
+      # (This step is harmless but not used by the manylinux build)
+      # You can keep or remove it.
+      - name: Install libtiff on host (not used by manylinux)
         run: |
           sudo apt-get update
           sudo apt-get install -y libtiff-dev
@@ -22,6 +24,14 @@ jobs:
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_OUTPUT_DIR: dist
+          # Use a known image; 2014 works well for most projects
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+          # Install libtiff *inside* the manylinux image
+          CIBW_BEFORE_ALL_LINUX: >
+            bash -exc 'if command -v yum; then yum -y install libtiff-devel;
+            elif command -v microdnf; then microdnf -y install libtiff-devel;
+            elif command -v dnf; then dnf -y install libtiff-devel;
+            else echo "No package manager found" >&2; exit 1; fi'
 
       - name: Build sdist
         run: |
