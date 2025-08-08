@@ -581,6 +581,9 @@ cdef class Tiff:
     """
     if self._singlepage:
         raise SinglePageError()
+    # if we are already on the page, we can save quite a bit of time by not re-reading all the tags and stuff.
+    if self.current_page == value:
+        return
     ctiff.TIFFSetDirectory(self.tiff_handle, value)
     self._init_page()
 
