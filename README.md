@@ -4,20 +4,19 @@ pytiff is a lightweight library for reading chunks from a tiff file. While it su
 
 The libtiff library is wrapped using the Cython package.
 
-develop : [![Build Status](https://travis-ci.org/FZJ-INM1-BDA/pytiff.svg?branch=develop)](https://travis-ci.org/FZJ-INM1-BDA/pytiff)
-master: [![Build Status](https://travis-ci.org/FZJ-INM1-BDA/pytiff.svg?branch=master)](https://travis-ci.org/FZJ-INM1-BDA/pytiff)
 coverage: [![Coverage Status](https://coveralls.io/repos/github/FZJ-INM1-BDA/pytiff/badge.svg)](https://coveralls.io/github/FZJ-INM1-BDA/pytiff)
 doc: [![Documentation Status](https://readthedocs.org/projects/pytiff/badge/?version=latest)](http://pytiff.readthedocs.io/en/latest/?badge=latest)
 
 ## Dependencies
 
-* libtiff C library (>= 4.0 for bigtiff access)
-* Cython >= 0.23
-* numpy
+- libtiff C library (>= 4.0 for bigtiff access)
+- Cython >= 0.23
+- numpy
 
 ## Installation
 
 ### Installation on Linux / Mac
+
 Just use pip
 
 ```bash
@@ -45,7 +44,6 @@ pip install . # or python setup.py install
     * Start Visual Studio Development CMD
     * `python setup.py install`
 
-
 ## Development
 
 For development:
@@ -60,6 +58,7 @@ pip install -e . # or python setup.py develop
 
 can be used, so that no reinstallation is needed for every update.
 If new updates are pulled the cython part has to be recompiled.
+
 ```bash
 #compile cython part
 python setup.py build_ext --inplace
@@ -70,6 +69,7 @@ python setup.py build_ext --inplace
 A small example how pytiff can be used:
 
 Reading:
+
 ```python
 import pytiff
 
@@ -78,6 +78,7 @@ with pytiff.Tiff("test_data/small_example_tiled.tif") as handle:
 ```
 
 Writing data from `pages` into a multipage tiff:
+
 ```python
 import pytiff
 with pytiff.Tiff("test_data/tmp.tif", "w") as handle:
