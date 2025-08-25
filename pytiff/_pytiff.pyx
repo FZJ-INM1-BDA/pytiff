@@ -661,7 +661,11 @@ cdef class Tiff:
     cdef np.ndarray buffer
     shape = self.size[:2]
     buffer = np.zeros(shape, dtype=np.uint32)
-    ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
+    cdef int ok
+    with nogil:
+        ok = ctiff.TIFFReadRGBAImage(self.tiff_handle, self.image_width, self.image_length, <unsigned int*>buffer.data, 0)
+    if ok != 1:
+        raise IOError(f"TIFFReadRGBAImage failed")
     rgb = _get_rgb(buffer, self.samples_per_pixel)
     rgb = np.flipud(rgb)
     return rgb
@@ -671,10 +675,16 @@ cdef class Tiff:
     self.logger.debug("Loading a whole greyscale image.")
     cdef np.ndarray total = np.zeros(self.size, dtype=self.dtype)
     cdef np.ndarray buffer = np.zeros(self.image_width, dtype=self.dtype)
+    cdef void* ptr
+    cdef int i, err
 
     for i in range(self.image_length):
-      ctiff.TIFFReadScanline(self.tiff_handle,<void*> buffer.data, i, 0)
-      total[i] = buffer
+        ptr = <void*> buffer.data
+        with nogil:
+            err = ctiff.TIFFReadScanline(self.tiff_handle,ptr, i, 0)
+        if err == -1:
+            raise IOError("TIFFReadScanline failed at row %d" % i)
+        total[i] = buffer
     return total
 
   def _load_tiled(self, y_range, x_range):
@@ -1238,7 +1248,9 @@ cdef class Tiff:
 
   cdef _read_tile(self, unsigned int y, unsigned int x):
     cdef np.ndarray buffer = np.zeros((self.tile_length, self.tile_width, self.n_samples),dtype=self.dtype).squeeze()
-    cdef ctiff.tsize_t bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, x, y, 0, 0)
+    cdef ctiff.tsize_t bytes
+    with nogil:
+        bytes = ctiff.TIFFReadTile(self.tiff_handle, <void *>buffer.data, x, y, 0, 0)
     if bytes == -1:
       raise NotTiledError("Tiled reading not possible")
     return buffer

@@ -30,8 +30,8 @@ cdef extern from "tiffio.h":
   TIFF* TIFFOpen(const char*, const char*)
   void TIFFClose(TIFF*)
   # reading
-  tsize_t TIFFReadTile(TIFF* tif, tdata_t buf, unsigned int x, unsigned int y, unsigned int z, tsample_t sample)
-  int TIFFReadScanline(TIFF* tif, tdata_t buf, unsigned int row, tsample_t sample)
+  tsize_t TIFFReadTile(TIFF* tif, tdata_t buf, unsigned int x, unsigned int y, unsigned int z, tsample_t sample) nogil
+  int TIFFReadScanline(TIFF* tif, tdata_t buf, unsigned int row, tsample_t sample) nogil
   # read helper
   ttile_t TIFFNumberOfTiles(TIFF* tif)
   tstrip_t TIFFNumberOfStrips(TIFF* tif)
@@ -46,8 +46,8 @@ cdef extern from "tiffio.h":
   int TIFFWriteDirectory(TIFF* tif)
   tdir_t TIFFNumberOfDirectories(TIFF* tiff)
   #RGBA functions
-  int TIFFReadRGBAImage(TIFF* tif, unsigned int width, unsigned int height, unsigned int* raster, int stopOnError)
-  int TIFFReadRGBATile(TIFF* tif, unsigned int x, unsigned int y, unsigned int* raster)
+  int TIFFReadRGBAImage(TIFF* tif, unsigned int width, unsigned int height, unsigned int* raster, int stopOnError) nogil
+  int TIFFReadRGBATile(TIFF* tif, unsigned int x, unsigned int y, unsigned int* raster) nogil
   unsigned short TIFFGetR(unsigned int pixel)
   unsigned short TIFFGetG(unsigned int pixel)
   unsigned short TIFFGetB(unsigned int pixel)
