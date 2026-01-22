@@ -64,6 +64,13 @@ If new updates are pulled the cython part has to be recompiled.
 python setup.py build_ext --inplace
 ```
 
+## Deployment
+
+```bash
+cibuildwheel --output-dir dist
+twine upload dist/*manylinux*
+```
+
 ## Usage
 
 A small example how pytiff can be used:
